@@ -178,7 +178,7 @@ writeEPUB opts doc@(Pandoc meta _) = do
             maybe [] id mbnum }
         $ case bs of
               (Header _ _ xs : _) -> Pandoc (Meta xs [] []) bs
-              _                   -> Pandoc (Meta [] [] []) bs
+              _                   -> Pandoc nullMeta bs
 
   let chapterEntries = zipWith chapToEntry [1..] chapters
 
@@ -246,7 +246,7 @@ writeEPUB opts doc@(Pandoc meta _) = do
                                 [("idref", "cover"),("linear","no")] $ () ]
               ++ ((unode "itemref" ! [("idref", "title_page")
                                      ,("linear", case meta of
-                                                      Meta [] [] [] -> "no"
+                                                      nullMeta -> "no"
                                                       _  -> "yes")] $ ()) :
                   (unode "itemref" ! [("idref", "nav")
                                      ,("linear", if writerTableOfContents opts
@@ -437,7 +437,7 @@ transformInline _ _ _ x = return x
 writeHtmlInline :: WriterOptions -> Inline -> String
 writeHtmlInline opts z = trimr $
   writeHtmlString opts{ writerStandalone = False }
-    $ Pandoc (Meta [] [] []) [Plain [z]]
+    $ Pandoc nullMeta [Plain [z]]
 
 (!) :: Node t => (t -> Element) -> [(String, String)] -> t -> Element
 (!) f attrs n = add_attrs (map (\(k,v) -> Attr (unqual k) v) attrs) (f n)

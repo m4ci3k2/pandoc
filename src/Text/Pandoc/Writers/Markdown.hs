@@ -370,7 +370,7 @@ blockToMarkdown opts t@(Table caption aligns widths headers rows) =  do
                              rawHeaders rawRows
                   | otherwise -> fmap (id,) $
                          return $ text $ writeHtmlString def
-                                $ Pandoc (Meta [] [] []) [t]
+                                $ Pandoc nullMeta [t]
   return $ nst $ tbl $$ blankline $$ caption'' $$ blankline
 blockToMarkdown opts (BulletList items) = do
   contents <- mapM (bulletListItemToMarkdown opts) items

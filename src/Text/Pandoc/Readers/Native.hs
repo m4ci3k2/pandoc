@@ -41,14 +41,14 @@ import Text.Pandoc.Shared (safeRead)
 --
 -- will be treated as if it were
 --
--- > Pandoc (Meta [] [] []) [Plain [Str "hi"]]
+-- > Pandoc nullMeta [Plain [Str "hi"]]
 --
 readNative :: String      -- ^ String to parse (assuming @'\n'@ line endings)
            -> Pandoc
 readNative s =
   case safeRead s of
        Just d    -> d
-       Nothing   -> Pandoc (Meta []) $ readBlocks s
+       Nothing   -> Pandoc nullMeta $ readBlocks s
 
 readBlocks :: String -> [Block]
 readBlocks s =

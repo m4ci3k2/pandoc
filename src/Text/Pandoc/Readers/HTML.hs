@@ -68,7 +68,7 @@ readHtml opts inp = Pandoc meta blocks
         hasHeader = any (~== TagOpen "head" []) tags
         (meta, rest) = if hasHeader
                           then parseHeader tags
-                          else (Meta [] [] [], tags)
+                          else (nullMeta, tags)
 
 type TagParser = Parser [Tag String] ParserState
 

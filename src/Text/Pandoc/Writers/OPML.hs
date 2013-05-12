@@ -62,7 +62,7 @@ writeOPML opts (Pandoc (Meta tit auths dat) blocks) =
 
 writeHtmlInlines :: [Inline] -> String
 writeHtmlInlines ils = trim $ writeHtmlString def
-                            $ Pandoc (Meta [] [] []) [Plain ils]
+                            $ Pandoc nullMeta [Plain ils]
 
 -- date format: RFC 822: Thu, 14 Jul 2005 23:41:05 GMT
 showDateTimeRFC822 :: UTCTime -> String
@@ -82,7 +82,7 @@ elementToOPML opts (Sec _ _num _ title elements) =
       fromBlk _ = error "fromBlk called on non-block"
       (blocks, rest) = span isBlk elements
       attrs = [("text", writeHtmlInlines title)] ++
-              [("_note", writeMarkdown def (Pandoc (Meta [] [] [])
+              [("_note", writeMarkdown def (Pandoc nullMeta
                               (map fromBlk blocks)))
                 | not (null blocks)]
   in  inTags True "outline" attrs $

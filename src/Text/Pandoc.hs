@@ -75,28 +75,28 @@ module Text.Pandoc
                -- * Writers: converting /from/ Pandoc format
                , Writer (..)
                , writeNative
-               , writeMarkdown
-               , writePlain
-               , writeRST
-               , writeLaTeX
-               , writeConTeXt
-               , writeTexinfo
+               -- , writeMarkdown
+               -- , writePlain
+               -- , writeRST
+               -- , writeLaTeX
+               -- , writeConTeXt
+               -- , writeTexinfo
                , writeHtml
                , writeHtmlString
-               , writeDocbook
-               , writeOPML
-               , writeOpenDocument
-               , writeMan
-               , writeMediaWiki
-               , writeTextile
-               , writeRTF
-               , writeODT
-               , writeDocx
-               , writeEPUB
-               , writeFB2
-               , writeOrg
-               , writeAsciiDoc
-               , writeCustom
+               -- , writeDocbook
+               -- , writeOPML
+               -- , writeOpenDocument
+               -- , writeMan
+               -- , writeMediaWiki
+               -- , writeTextile
+               -- , writeRTF
+               -- , writeODT
+               -- , writeDocx
+               -- , writeEPUB
+               -- , writeFB2
+               -- , writeOrg
+               -- , writeAsciiDoc
+               -- , writeCustom
                -- * Rendering templates and default templates
                , module Text.Pandoc.Templates
                -- * Version
@@ -121,26 +121,26 @@ import Text.Pandoc.Readers.Textile
 import Text.Pandoc.Readers.Native
 import Text.Pandoc.Readers.Haddock
 import Text.Pandoc.Writers.Native
-import Text.Pandoc.Writers.Markdown
-import Text.Pandoc.Writers.RST
-import Text.Pandoc.Writers.LaTeX
-import Text.Pandoc.Writers.ConTeXt
-import Text.Pandoc.Writers.Texinfo
+-- import Text.Pandoc.Writers.Markdown
+-- import Text.Pandoc.Writers.RST
+-- import Text.Pandoc.Writers.LaTeX
+-- import Text.Pandoc.Writers.ConTeXt
+-- import Text.Pandoc.Writers.Texinfo
 import Text.Pandoc.Writers.HTML
-import Text.Pandoc.Writers.ODT
-import Text.Pandoc.Writers.Docx
-import Text.Pandoc.Writers.EPUB
-import Text.Pandoc.Writers.FB2
-import Text.Pandoc.Writers.Docbook
-import Text.Pandoc.Writers.OPML
-import Text.Pandoc.Writers.OpenDocument
-import Text.Pandoc.Writers.Man
-import Text.Pandoc.Writers.RTF
-import Text.Pandoc.Writers.MediaWiki
-import Text.Pandoc.Writers.Textile
-import Text.Pandoc.Writers.Org
-import Text.Pandoc.Writers.AsciiDoc
-import Text.Pandoc.Writers.Custom
+-- import Text.Pandoc.Writers.ODT
+-- import Text.Pandoc.Writers.Docx
+-- import Text.Pandoc.Writers.EPUB
+-- import Text.Pandoc.Writers.FB2
+-- import Text.Pandoc.Writers.Docbook
+-- import Text.Pandoc.Writers.OPML
+-- import Text.Pandoc.Writers.OpenDocument
+-- import Text.Pandoc.Writers.Man
+-- import Text.Pandoc.Writers.RTF
+-- import Text.Pandoc.Writers.MediaWiki
+-- import Text.Pandoc.Writers.Textile
+-- import Text.Pandoc.Writers.Org
+-- import Text.Pandoc.Writers.AsciiDoc
+-- import Text.Pandoc.Writers.Custom
 import Text.Pandoc.Templates
 import Text.Pandoc.Options
 import Text.Pandoc.Shared (safeRead, warn)
@@ -217,13 +217,14 @@ writers :: [ ( String, Writer ) ]
 writers = [
    ("native"       , PureStringWriter writeNative)
   ,("json"         , PureStringWriter $ \_ -> UTF8.toStringLazy . encode)
-  ,("docx"         , IOByteStringWriter writeDocx)
-  ,("odt"          , IOByteStringWriter writeODT)
-  ,("epub"         , IOByteStringWriter $ \o ->
-                       writeEPUB o{ writerEpubVersion = Just EPUB2 })
-  ,("epub3"        , IOByteStringWriter $ \o ->
-                       writeEPUB o{ writerEpubVersion = Just EPUB3 })
-  ,("fb2"          , IOStringWriter writeFB2)
+--  ,("json"         , PureStringWriter $ \_ -> encodeJSON)
+--  ,("docx"         , IOByteStringWriter writeDocx)
+--  ,("odt"          , IOByteStringWriter writeODT)
+--  ,("epub"         , IOByteStringWriter $ \o ->
+--                       writeEPUB o{ writerEpubVersion = Just EPUB2 })
+--  ,("epub3"        , IOByteStringWriter $ \o ->
+--                       writeEPUB o{ writerEpubVersion = Just EPUB3 })
+--  ,("fb2"          , IOStringWriter writeFB2)
   ,("html"         , PureStringWriter writeHtmlString)
   ,("html5"        , PureStringWriter $ \o ->
      writeHtmlString o{ writerHtml5 = True })
@@ -240,27 +241,27 @@ writers = [
   ,("revealjs"      , PureStringWriter $ \o ->
      writeHtmlString o{ writerSlideVariant = RevealJsSlides
                       , writerHtml5 = True })
-  ,("docbook"      , PureStringWriter writeDocbook)
-  ,("opml"         , PureStringWriter writeOPML)
-  ,("opendocument" , PureStringWriter writeOpenDocument)
-  ,("latex"        , PureStringWriter writeLaTeX)
-  ,("beamer"       , PureStringWriter $ \o ->
-     writeLaTeX o{ writerBeamer = True })
-  ,("context"      , PureStringWriter writeConTeXt)
-  ,("texinfo"      , PureStringWriter writeTexinfo)
-  ,("man"          , PureStringWriter writeMan)
-  ,("markdown"     , PureStringWriter writeMarkdown)
-  ,("markdown_strict" , PureStringWriter writeMarkdown)
-  ,("markdown_phpextra" , PureStringWriter writeMarkdown)
-  ,("markdown_github" , PureStringWriter writeMarkdown)
-  ,("markdown_mmd" , PureStringWriter writeMarkdown)
-  ,("plain"        , PureStringWriter writePlain)
-  ,("rst"          , PureStringWriter writeRST)
-  ,("mediawiki"    , PureStringWriter writeMediaWiki)
-  ,("textile"      , PureStringWriter writeTextile)
-  ,("rtf"          , IOStringWriter writeRTFWithEmbeddedImages)
-  ,("org"          , PureStringWriter writeOrg)
-  ,("asciidoc"     , PureStringWriter writeAsciiDoc)
+--  ,("docbook"      , PureStringWriter writeDocbook)
+--  ,("opml"         , PureStringWriter writeOPML)
+--  ,("opendocument" , PureStringWriter writeOpenDocument)
+--  ,("latex"        , PureStringWriter writeLaTeX)
+--  ,("beamer"       , PureStringWriter $ \o ->
+--     writeLaTeX o{ writerBeamer = True })
+--  ,("context"      , PureStringWriter writeConTeXt)
+--  ,("texinfo"      , PureStringWriter writeTexinfo)
+--  ,("man"          , PureStringWriter writeMan)
+--  ,("markdown"     , PureStringWriter writeMarkdown)
+--  ,("markdown_strict" , PureStringWriter writeMarkdown)
+--  ,("markdown_phpextra" , PureStringWriter writeMarkdown)
+--  ,("markdown_github" , PureStringWriter writeMarkdown)
+--  ,("markdown_mmd" , PureStringWriter writeMarkdown)
+--  ,("plain"        , PureStringWriter writePlain)
+--  ,("rst"          , PureStringWriter writeRST)
+--  ,("mediawiki"    , PureStringWriter writeMediaWiki)
+--  ,("textile"      , PureStringWriter writeTextile)
+--  ,("rtf"          , IOStringWriter writeRTFWithEmbeddedImages)
+--  ,("org"          , PureStringWriter writeOrg)
+--  ,("asciidoc"     , PureStringWriter writeAsciiDoc)
   ]
 
 getDefaultExtensions :: String -> Set Extension

@@ -111,7 +111,10 @@ writeHtml opts d =
 pandocToHtml :: WriterOptions
              -> Pandoc
              -> State WriterState (Html, [Html], [Html], Html, Maybe Html, Html, [(String,String)])
-pandocToHtml opts (Pandoc (Meta title' authors' date') blocks) = do
+pandocToHtml opts (Pandoc meta blocks) = do
+  let title'   = docTitle meta
+  let authors' = docAuthors meta
+  let date'    = docDate meta
   let standalone = writerStandalone opts
   tit <- if standalone
             then inlineListToHtml opts title'

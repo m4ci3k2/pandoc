@@ -63,13 +63,13 @@ module Text.Pandoc
                , writers
                -- * Readers: converting /to/ Pandoc format
                , readMarkdown
-               , readMediaWiki
-               , readRST
+               -- , readMediaWiki
+               -- , readRST
                , readLaTeX
                , readHtml
-               , readTextile
-               , readDocBook
-               , readOPML
+               -- , readTextile
+               -- , readDocBook
+               -- , readOPML
                , readHaddock
                , readNative
                -- * Writers: converting /from/ Pandoc format
@@ -111,13 +111,13 @@ module Text.Pandoc
 import Text.Pandoc.Definition
 import Text.Pandoc.Generic
 import Text.Pandoc.Readers.Markdown
-import Text.Pandoc.Readers.MediaWiki
-import Text.Pandoc.Readers.RST
-import Text.Pandoc.Readers.DocBook
-import Text.Pandoc.Readers.OPML
-import Text.Pandoc.Readers.LaTeX
-import Text.Pandoc.Readers.HTML
-import Text.Pandoc.Readers.Textile
+-- import Text.Pandoc.Readers.MediaWiki
+-- import Text.Pandoc.Readers.RST
+-- import Text.Pandoc.Readers.DocBook
+-- import Text.Pandoc.Readers.OPML
+-- import Text.Pandoc.Readers.LaTeX
+-- import Text.Pandoc.Readers.HTML
+-- import Text.Pandoc.Readers.Textile
 import Text.Pandoc.Readers.Native
 import Text.Pandoc.Readers.Haddock
 import Text.Pandoc.Writers.Native
@@ -193,18 +193,18 @@ readers :: [(String, ReaderOptions -> String -> IO Pandoc)]
 readers = [("native"       , \_ s -> return $ readNative s)
           ,("json"         , \_ s -> return $ checkJSON
                                             $ decode $ UTF8.fromStringLazy s)
-          ,("markdown"     , markdown)
-          ,("markdown_strict" , markdown)
-          ,("markdown_phpextra" , markdown)
-          ,("markdown_github" , markdown)
-          ,("markdown_mmd",  markdown)
-          ,("rst"          , \o s -> return $ readRST o s)
-          ,("mediawiki"    , \o s -> return $ readMediaWiki o s)
-          ,("docbook"      , \o s -> return $ readDocBook o s)
-          ,("opml"         , \o s -> return $ readOPML o s)
-          ,("textile"      , \o s -> return $ readTextile o s) -- TODO : textile+lhs
-          ,("html"         , \o s -> return $ readHtml o s)
-          ,("latex"        , \o s -> return $ readLaTeX o s)
+           ,("markdown"     , markdown)
+           ,("markdown_strict" , markdown)
+           ,("markdown_phpextra" , markdown)
+           ,("markdown_github" , markdown)
+           ,("markdown_mmd",  markdown)
+--           ,("rst"          , \o s -> return $ readRST o s)
+--           ,("mediawiki"    , \o s -> return $ readMediaWiki o s)
+--           ,("docbook"      , \o s -> return $ readDocBook o s)
+--           ,("opml"         , \o s -> return $ readOPML o s)
+--           ,("textile"      , \o s -> return $ readTextile o s) -- TODO : textile+lhs
+           ,("html"         , \o s -> return $ readHtml o s)
+           ,("latex"        , \o s -> return $ readLaTeX o s)
           ,("haddock"      , \o s -> return $ readHaddock o s)
           ]
 

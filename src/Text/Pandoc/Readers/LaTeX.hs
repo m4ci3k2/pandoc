@@ -65,13 +65,14 @@ parseLaTeX = do
   bs <- blocks
   eof
   st <- getState
-  let title' = stateTitle st
-  let authors' = stateAuthors st
-  let date' = stateDate st
+  let title' = fromList $ stateTitle st
+  let authors' = map fromList $ stateAuthors st
+  let date' = fromList $ stateDate st
   refs <- getOption readerReferences
   mbsty <- getOption readerCitationStyle
   return $ processBiblio mbsty refs
-         $ Pandoc (Meta title' authors' date') $ toList bs
+         $ setTitle title' $ setAuthors authors' $ setDate date'
+         $ doc bs
 
 type LP = Parser [Char] ParserState
 

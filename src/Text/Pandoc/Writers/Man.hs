@@ -49,10 +49,10 @@ writeMan opts document = evalState (pandocToMan opts document) (WriterState [] F
 
 -- | Return groff man representation of document.
 pandocToMan :: WriterOptions -> Pandoc -> State WriterState String
-pandocToMan opts (Pandoc (Meta title authors date) blocks) = do
-  titleText <- inlineListToMan opts title
-  authors' <- mapM (inlineListToMan opts) authors
-  date' <- inlineListToMan opts date
+pandocToMan opts (Pandoc meta blocks) = do
+  titleText <- inlineListToMan opts $ docTitle meta
+  authors' <- mapM (inlineListToMan opts) $ docAuthors meta
+  date' <- inlineListToMan opts $ docDate meta
   let colwidth = if writerWrapText opts
                     then Just $ writerColumns opts
                     else Nothing

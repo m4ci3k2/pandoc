@@ -86,7 +86,7 @@ module Text.Pandoc
                -- , writeDocbook
                -- , writeOPML
                -- , writeOpenDocument
-               -- , writeMan
+               , writeMan
                -- , writeMediaWiki
                -- , writeTextile
                -- , writeRTF
@@ -96,7 +96,7 @@ module Text.Pandoc
                -- , writeFB2
                -- , writeOrg
                -- , writeAsciiDoc
-               -- , writeCustom
+               , writeCustom
                -- * Rendering templates and default templates
                , module Text.Pandoc.Templates
                -- * Version
@@ -115,8 +115,8 @@ import Text.Pandoc.Readers.Markdown
 -- import Text.Pandoc.Readers.RST
 -- import Text.Pandoc.Readers.DocBook
 -- import Text.Pandoc.Readers.OPML
--- import Text.Pandoc.Readers.LaTeX
--- import Text.Pandoc.Readers.HTML
+import Text.Pandoc.Readers.LaTeX
+import Text.Pandoc.Readers.HTML
 -- import Text.Pandoc.Readers.Textile
 import Text.Pandoc.Readers.Native
 import Text.Pandoc.Readers.Haddock
@@ -134,13 +134,13 @@ import Text.Pandoc.Writers.HTML
 -- import Text.Pandoc.Writers.Docbook
 -- import Text.Pandoc.Writers.OPML
 -- import Text.Pandoc.Writers.OpenDocument
--- import Text.Pandoc.Writers.Man
+import Text.Pandoc.Writers.Man
 -- import Text.Pandoc.Writers.RTF
 -- import Text.Pandoc.Writers.MediaWiki
 -- import Text.Pandoc.Writers.Textile
 -- import Text.Pandoc.Writers.Org
 -- import Text.Pandoc.Writers.AsciiDoc
--- import Text.Pandoc.Writers.Custom
+import Text.Pandoc.Writers.Custom
 import Text.Pandoc.Templates
 import Text.Pandoc.Options
 import Text.Pandoc.Shared (safeRead, warn)

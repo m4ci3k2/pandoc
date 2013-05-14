@@ -48,6 +48,7 @@ import Data.Maybe ( fromMaybe, isJust )
 import Data.List ( intercalate )
 import Data.Char ( isDigit )
 import Control.Monad ( liftM, guard, when, mzero )
+import Control.Applicative ( (<$>), (<$) )
 
 isSpace :: Char -> Bool
 isSpace ' '  = True
@@ -59,33 +60,26 @@ isSpace _    = False
 readHtml :: ReaderOptions -- ^ Reader options
          -> String        -- ^ String to parse (assumes @'\n'@ line endings)
          -> Pandoc
-readHtml opts inp = Pandoc meta blocks
-  where blocks  = case runParser parseBody def{ stateOptions = opts }
-                    "source" rest of
-                      Left err'    -> error $ "\nError at " ++ show  err'
-                      Right result -> result
-        tags    = canonicalizeTags $
+readHtml opts inp =
+  case runParser parseDoc def{ stateOptions = opts } "source" tags of
+          Left err'    -> error $ "\nError at " ++ show  err'
+          Right result -> result
+    where tags = canonicalizeTags $
                    parseTagsOptions parseOptions{ optTagPosition = True } inp
-        hasHeader = any (~== TagOpen "head" []) tags
-        (meta, rest) = if hasHeader
-                          then parseHeader tags
-                          else (nullMeta, tags)
+          parseDoc = do
+             blocks <- (fixPlains False . concat) <$> manyTill block eof
+             tit <- (MetaBlocks . (:[]) . Plain . stateTitle) <$> getState
+             return $ Pandoc (Meta $ M.insert "title" tit M.empty) blocks
 
 type TagParser = Parser [Tag String] ParserState
 
--- TODO - fix this - not every header has a title tag
-parseHeader :: [Tag String] -> (Meta, [Tag String])
-parseHeader tags = (meta, rest)
-  where (tit,_) = break (~== TagClose "title") $ drop 1 $
-                   dropWhile (\t -> not $ t ~== TagOpen "title" []) tags
-        tit' = concatMap fromTagText $ filter isTagText tit
-        tit'' = B.toList $ B.plain $ B.trimInlines $ B.text tit'
-        rest  = drop 1 $ dropWhile (\t -> not $ t ~== TagClose "head" ||
-                                                t ~== TagOpen "body" []) tags
-        meta = Meta $ M.insert "title" (MetaBlocks tit'') $ M.empty
+pBody :: TagParser [Block]
+pBody = pInTags "body" block
 
-parseBody :: TagParser [Block]
-parseBody = liftM (fixPlains False . concat) $ manyTill block eof
+pHead :: TagParser [Block]
+pHead = pInTags "head" $ pTitle <|> ([] <$ pAnyTag)
+  where pTitle = pInTags "title" inline >>= setTitle . normalizeSpaces
+        setTitle t = [] <$ (updateState $ \st -> st{ stateTitle = t })
 
 block :: TagParser [Block]
 block = choice
@@ -96,6 +90,8 @@ block = choice
             , pList
             , pHrule
             , pSimpleTable
+            , pHead
+            , pBody
             , pPlain
             , pRawHtmlBlock
             ]

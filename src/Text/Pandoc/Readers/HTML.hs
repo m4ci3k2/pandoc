@@ -39,7 +39,8 @@ module Text.Pandoc.Readers.HTML ( readHtml
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Match
 import Text.Pandoc.Definition
-import Text.Pandoc.Builder (text, toList)
+import qualified Text.Pandoc.Builder as B
+import qualified Data.Map as M
 import Text.Pandoc.Shared
 import Text.Pandoc.Options
 import Text.Pandoc.Parsing
@@ -74,13 +75,14 @@ type TagParser = Parser [Tag String] ParserState
 
 -- TODO - fix this - not every header has a title tag
 parseHeader :: [Tag String] -> (Meta, [Tag String])
-parseHeader tags = (Meta{docTitle = tit'', docAuthors = [], docDate = []}, rest)
+parseHeader tags = (meta, rest)
   where (tit,_) = break (~== TagClose "title") $ drop 1 $
                    dropWhile (\t -> not $ t ~== TagOpen "title" []) tags
         tit' = concatMap fromTagText $ filter isTagText tit
-        tit'' = normalizeSpaces $ toList $ text tit'
+        tit'' = B.toList $ B.plain $ B.trimInlines $ B.text tit'
         rest  = drop 1 $ dropWhile (\t -> not $ t ~== TagClose "head" ||
                                                 t ~== TagOpen "body" []) tags
+        meta = Meta $ M.insert "title" (MetaBlocks tit'') $ M.empty
 
 parseBody :: TagParser [Block]
 parseBody = liftM (fixPlains False . concat) $ manyTill block eof
@@ -366,7 +368,7 @@ pImage = do
   let url = fromAttrib "src" tag
   let title = fromAttrib "title" tag
   let alt = fromAttrib "alt" tag
-  return [Image (toList $ text alt) (escapeURI url, title)]
+  return [Image (B.toList $ B.text alt) (escapeURI url, title)]
 
 pCode :: TagParser [Inline]
 pCode = try $ do

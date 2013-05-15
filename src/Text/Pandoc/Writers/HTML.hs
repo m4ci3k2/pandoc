@@ -112,21 +112,18 @@ pandocToHtml :: WriterOptions
              -> Pandoc
              -> State WriterState (Html, [Html], [Html], Html, Maybe Html, Html, [(String,String)])
 pandocToHtml opts (Pandoc meta blocks) = do
-  let title'   = docTitle meta
-  let authors' = docAuthors meta
-  let date'    = docDate meta
   let standalone = writerStandalone opts
   tit <- if standalone
-            then inlineListToHtml opts title'
+            then inlineListToHtml opts $ docTitle meta
             else return mempty
   auths <- if standalone
-              then mapM (inlineListToHtml opts) authors'
+              then mapM (inlineListToHtml opts) $ docAuthors meta
               else return []
   authsMeta <- if standalone
-                  then mapM (inlineListToHtml opts . prepForMeta) authors'
+                  then mapM (inlineListToHtml opts . prepForMeta) $ docAuthors meta
                   else return []
   date <- if standalone
-             then inlineListToHtml opts date'
+             then inlineListToHtml opts $ docDate meta
              else return mempty
   let slideLevel = maybe (getSlideLevel blocks) id $ writerSlideLevel opts
   let sects = hierarchicalize $

@@ -121,7 +121,7 @@ parseRST = do
   let authors = stateAuthors state
   let date = stateDate state
   let title' = if null title then stateTitle state else title
-  return $ Pandoc (Meta title' authors date) blocks'
+  return $ Pandoc (makeMeta title' authors date) blocks'
 
 --
 -- parsing blocks

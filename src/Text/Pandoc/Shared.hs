@@ -61,6 +61,7 @@ module Text.Pandoc.Shared (
                      isHeaderBlock,
                      headerShift,
                      isTightList,
+                     makeMeta,
                      -- * TagSoup HTML handling
                      renderTags',
                      -- * File handling
@@ -86,6 +87,7 @@ import System.Exit (exitWith, ExitCode(..))
 import Data.Char ( toLower, isLower, isUpper, isAlpha,
                    isLetter, isDigit, isSpace )
 import Data.List ( find, isPrefixOf, intercalate )
+import qualified Data.Map as M
 import Network.URI ( escapeURIString, isAbsoluteURI, parseURI, unEscapeString )
 import System.Directory
 import Text.Pandoc.MIME (getMimeType)
@@ -490,6 +492,15 @@ isTightList :: [[Block]] -> Bool
 isTightList = and . map firstIsPlain
   where firstIsPlain (Plain _ : _) = True
         firstIsPlain _             = False
+
+-- | Create 'Meta' from old-style title, authors, date.  This is
+-- provided to ease the transition from the old API.
+makeMeta :: [Inline] -> [[Inline]] -> [Inline] -> Meta
+makeMeta title authors date =
+  Meta $ M.fromList [("title", toblocks title)
+                    ,("author", MetaList $ map toblocks authors)
+                    ,("date", toblocks date)]
+    where toblocks xs = MetaBlocks [Plain xs]
 
 --
 -- TagSoup HTML handling

@@ -63,13 +63,13 @@ module Text.Pandoc
                , writers
                -- * Readers: converting /to/ Pandoc format
                , readMarkdown
-               -- , readMediaWiki
-               -- , readRST
+               , readMediaWiki
+               , readRST
                , readLaTeX
                , readHtml
-               -- , readTextile
-               -- , readDocBook
-               -- , readOPML
+               , readTextile
+               , readDocBook
+               , readOPML
                , readHaddock
                , readNative
                -- * Writers: converting /from/ Pandoc format
@@ -111,13 +111,13 @@ module Text.Pandoc
 import Text.Pandoc.Definition
 import Text.Pandoc.Generic
 import Text.Pandoc.Readers.Markdown
--- import Text.Pandoc.Readers.MediaWiki
--- import Text.Pandoc.Readers.RST
--- import Text.Pandoc.Readers.DocBook
--- import Text.Pandoc.Readers.OPML
+import Text.Pandoc.Readers.MediaWiki
+import Text.Pandoc.Readers.RST
+import Text.Pandoc.Readers.DocBook
+import Text.Pandoc.Readers.OPML
 import Text.Pandoc.Readers.LaTeX
 import Text.Pandoc.Readers.HTML
--- import Text.Pandoc.Readers.Textile
+import Text.Pandoc.Readers.Textile
 import Text.Pandoc.Readers.Native
 import Text.Pandoc.Readers.Haddock
 import Text.Pandoc.Writers.Native

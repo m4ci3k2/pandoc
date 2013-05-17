@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, CPP #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, CPP, OverloadedStrings #-}
 {-
 Copyright (C) 2009-2010 John MacFarlane <jgm@berkeley.edu>
 
@@ -65,13 +65,24 @@ You may optionally specify separators using @$sep$@:
 -}
 
 module Text.Pandoc.Templates ( renderTemplate
-                             , TemplateTarget
+                             , TemplateTarget(..)
                              , getDefaultTemplate ) where
 
-import Text.Parsec
-import Control.Monad (liftM, when, forM, mzero)
-import System.FilePath
-import Data.List (intercalate, intersperse)
+import Data.Char (isAlphaNum)
+import Control.Monad (guard, when)
+import Data.Aeson (ToJSON(..), Value(..))
+import qualified Data.Attoparsec.Text as A
+import Data.Attoparsec.Text (Parser)
+import Control.Applicative
+import qualified Data.Text as T
+import Data.Text (Text)
+import Data.Monoid ((<>), Monoid(..))
+import Data.List (intersperse)
+import System.FilePath ((</>), (<.>))
+import qualified Data.Map as M
+import qualified Data.HashMap.Strict as H
+import Data.Foldable (toList)
+import qualified Control.Exception.Extensible as E (try, IOException)
 #if MIN_VERSION_blaze_html(0,5,0)
 import Text.Blaze.Html (Html)
 import Text.Blaze.Internal (preEscapedString)
@@ -81,7 +92,6 @@ import Text.Blaze (preEscapedString, Html)
 import Text.Pandoc.UTF8 (fromStringLazy)
 import Data.ByteString.Lazy (ByteString)
 import Text.Pandoc.Shared (readDataFileUTF8)
-import qualified Control.Exception.Extensible as E (try, IOException)
 
 -- | Get default template for the specified writer.
 getDefaultTemplate :: (Maybe FilePath) -- ^ User data directory to search first
@@ -100,16 +110,20 @@ getDefaultTemplate user writer = do
        _        -> let fname = "templates" </> "default" <.> format
                    in  E.try $ readDataFileUTF8 user fname
 
-data TemplateState = TemplateState Int [(String,String)]
+data Template = Literal Text
+              | Subst (Value -> Template)
+              | Empty
 
-adjustPosition :: String -> Parsec [Char] TemplateState String
-adjustPosition str = do
-  let lastline = takeWhile (/= '\n') $ reverse str
-  updateState $ \(TemplateState pos x) ->
-    if str == lastline
-       then TemplateState (pos + length lastline) x
-       else TemplateState (length lastline) x
-  return str
+type Variable = [Text]
+
+instance Monoid Template where
+  mempty = Empty
+  mappend Empty       x           = x
+  mappend x           Empty       = x
+  mappend (Literal x) (Literal y) = Literal (x <> y)
+  mappend (Literal x) (Subst f)   = Subst (\c -> Literal x <> f c)
+  mappend (Subst f)   (Literal x) = Subst (\c -> f c <> Literal x)
+  mappend (Subst f)   (Subst g)   = Subst (\c -> f c <> g c)
 
 class TemplateTarget a where
   toTarget :: String -> a
@@ -123,96 +137,176 @@ instance TemplateTarget ByteString where
 instance TemplateTarget Html where
   toTarget = preEscapedString
 
--- | Renders a template
 renderTemplate :: TemplateTarget a
                => [(String,String)]  -- ^ Assoc. list of values for variables
                -> String             -- ^ Template
                -> a
-renderTemplate vals templ =
-  case runParser (do x <- parseTemplate; eof; return x) (TemplateState 0 vals) "template" templ of
-       Left e        -> error $ show e
-       Right r       -> toTarget $ concat r
+renderTemplate assoc template =
+  toTarget $ T.unpack $ renderTemplateNew templ ctx
+  where ctx = toJSON $ toMap $ map toTexts assoc
+        toTexts (s1, s2) = (T.pack s1, T.pack s2)
+        toMap :: [(Text, Text)] -> M.Map Text Value
+        toMap ts = M.fromList $
+           map (\x -> (x, toVal [z | (y, z) <- ts, not (T.null z), y == x]))
+                              $ map fst ts
+        toVal []  = Null
+        toVal [x] = toJSON x
+        toVal xs  = toJSON xs
+        templ = case compileTemplate (T.pack template) of
+                     Left err -> error err
+                     Right t  -> t
 
-reservedWords :: [String]
+renderTemplateNew :: ToJSON a => Template -> a -> Text
+renderTemplateNew template context = renderTemplate' template (toJSON context)
+
+renderTemplate' :: Template -> Value -> Text
+renderTemplate' (Literal b) _ = b
+renderTemplate' (Subst f) ctx = renderTemplate' (f ctx) ctx
+renderTemplate' Empty _ = mempty
+
+compileTemplate :: Text -> Either String Template
+compileTemplate template = A.parseOnly pTemplate template
+
+var :: Variable -> Template
+var = Subst . resolveVar
+
+resolveVar :: Variable -> Value -> Template
+resolveVar var' val =
+  case multiLookup var' val of
+       Just (Array vec) -> mconcat $ map (resolveVar []) $ toList vec
+       Just (String t)  -> Literal $ T.stripEnd t
+       Just (Number n)  -> Literal $ T.pack $ show n
+       Just (Bool True) -> Literal "True"
+       Just _           -> Empty
+       Nothing          -> Empty
+
+multiLookup :: [Text] -> Value -> Maybe Value
+multiLookup [] x = Just x
+multiLookup (v:vs) (Object o) = H.lookup v o >>= multiLookup vs
+multiLookup _ _ = Nothing
+
+lit :: Text -> Template
+lit = Literal
+
+cond :: Variable -> Template -> Template -> Template
+cond var' ifyes ifno = Subst $ \val ->
+  case resolveVar var' val of
+       Empty -> ifno
+       _     -> ifyes
+
+iter :: Variable -> Template -> Template -> Template
+iter var' template sep = Subst $ \val ->
+  case multiLookup var' val of
+       Just (Array vec) -> mconcat $ intersperse sep
+                                   $ map (setVar template var')
+                                   $ toList vec
+       Just x           -> setVar template var' x
+       Nothing          -> mempty
+
+setVar :: Template -> Variable -> Value -> Template
+setVar (Literal b) _   _   = Literal b
+setVar Empty       _   _   = Empty
+setVar (Subst f)   v   new = Subst $ \old -> f (replaceVar v new old)
+
+replaceVar :: Variable -> Value -> Value -> Value
+replaceVar []     new _          = new
+replaceVar (v:vs) new (Object o) =
+  Object $ H.adjust (\x -> replaceVar vs new x) v o
+replaceVar _ _ old = old
+
+--- parsing
+
+pTemplate :: Parser Template
+pTemplate = do
+  sp <- A.option mempty pInitialSpace
+  rest <- mconcat <$> many (pConditional <|>
+                            pFor <|>
+                            pNewline <|>
+                            pVar <|>
+                            pLit <|>
+                            pEscapedDollar)
+  return $ sp <> rest
+
+pLit :: Parser Template
+pLit = lit <$> A.takeWhile1 (\x -> x /='$' && x /= '\n')
+
+pNewline :: Parser Template
+pNewline = do
+  A.char '\n'
+  sp <- A.option mempty pInitialSpace
+  return $ lit "\n" <> sp
+
+pInitialSpace :: Parser Template
+pInitialSpace = do
+  sps <- A.takeWhile1 (==' ')
+  let indentVar = if T.null sps
+                     then id
+                     else indent (T.length sps)
+  v <- A.option mempty $ indentVar <$> pVar
+  return $ lit sps <> v
+
+pEscapedDollar :: Parser Template
+pEscapedDollar = lit "$" <$ A.string "$$"
+
+pVar :: Parser Template
+pVar = var <$> (A.char '$' *> pIdent <* A.char '$')
+
+pIdent :: Parser [Text]
+pIdent = do
+  first <- pIdentPart
+  rest <- many (A.char '.' *> pIdentPart)
+  return (first:rest)
+
+pIdentPart :: Parser Text
+pIdentPart = do
+  first <- A.letter
+  rest <- A.takeWhile (\c -> isAlphaNum c || c == '_' || c == '-')
+  let id' = T.singleton first <> rest
+  guard $ id' `notElem` reservedWords
+  return id'
+
+reservedWords :: [Text]
 reservedWords = ["else","endif","for","endfor","sep"]
 
-parseTemplate :: Parsec [Char] TemplateState [String]
-parseTemplate =
-  many $ (plaintext <|> escapedDollar <|> conditional <|> for <|> variable)
-           >>= adjustPosition
+skipEndline :: Parser ()
+skipEndline = A.skipWhile (`elem` " \t") >> A.char '\n' >> return ()
 
-plaintext :: Parsec [Char] TemplateState String
-plaintext = many1 $ noneOf "$"
-
-escapedDollar :: Parsec [Char] TemplateState String
-escapedDollar = try $ string "$$" >> return "$"
-
-skipEndline :: Parsec [Char] st ()
-skipEndline = try $ skipMany (oneOf " \t") >> newline >> return ()
-
-conditional :: Parsec [Char] TemplateState String
-conditional = try $ do
-  TemplateState pos vars <- getState
-  string "$if("
-  id' <- ident
-  string ")$"
+pConditional :: Parser Template
+pConditional = do
+  A.string "$if("
+  id' <- pIdent
+  A.string ")$"
   -- if newline after the "if", then a newline after "endif" will be swallowed
-  multiline <- option False $ try $ skipEndline >> return True
-  ifContents <- liftM concat parseTemplate
-  -- reset state for else block
-  setState $ TemplateState pos vars
-  elseContents <- option "" $ do try (string "$else$")
-                                 when multiline $ optional skipEndline
-                                 liftM concat parseTemplate
-  string "$endif$"
-  when multiline $ optional skipEndline
-  let conditionSatisfied = case lookup id' vars of
-                                Nothing -> False
-                                Just "" -> False
-                                Just _  -> True
-  return $ if conditionSatisfied
-              then ifContents
-              else elseContents
+  multiline <- A.option False (True <$ skipEndline)
+  ifContents <- pTemplate
+  elseContents <- A.option Empty $
+                      do A.string "$else$"
+                         when multiline $ A.option () skipEndline
+                         pTemplate
+  A.string "$endif$"
+  when multiline $ A.option () skipEndline
+  return $ cond id' ifContents elseContents
 
-for :: Parsec [Char] TemplateState String
-for = try $ do
-  TemplateState pos vars <- getState
-  string "$for("
-  id' <- ident
-  string ")$"
+pFor :: Parser Template
+pFor = do
+  A.string "$for("
+  id' <- pIdent
+  A.string ")$"
   -- if newline after the "for", then a newline after "endfor" will be swallowed
-  multiline <- option False $ try $ skipEndline >> return True
-  let matches = filter (\(k,_) -> k == id') vars
-  let indent = replicate pos ' '
-  contents <- forM matches $ \m -> do
-                      updateState $ \(TemplateState p v) -> TemplateState p (m:v)
-                      raw <- liftM concat $ lookAhead parseTemplate
-                      return $ intercalate ('\n':indent) $ lines $ raw ++ "\n"
-  parseTemplate
-  sep <- option "" $ do try (string "$sep$")
-                        when multiline $ optional skipEndline
-                        liftM concat parseTemplate
-  string "$endfor$"
-  when multiline $ optional skipEndline
-  setState $ TemplateState pos vars
-  return $ concat $ intersperse sep contents
+  multiline <- A.option False $ skipEndline >> return True
+  contents <- pTemplate
+  sep <- A.option Empty $
+           do A.string "$sep$"
+              when multiline $ A.option () skipEndline
+              pTemplate
+  A.string "$endfor$"
+  when multiline $ A.option () skipEndline
+  return $ iter id' contents sep
 
-ident :: Parsec [Char] TemplateState String
-ident = do
-  first <- letter
-  rest <- many (alphaNum <|> oneOf "_-")
-  let id' = first : rest
-  if id' `elem` reservedWords
-     then mzero
-     else return id'
+indent :: Int -> Template -> Template
+indent 0   x           = x
+indent _   Empty       = Empty
+indent ind (Literal t) = Literal $ T.concat $ intersperse sep $ T.lines t
+   where sep = "\n" <> T.replicate ind " "
+indent ind (Subst f)   = Subst $ \val -> indent ind (f val)
 
-variable :: Parsec [Char] TemplateState String
-variable = try $ do
-  char '$'
-  id' <- ident
-  char '$'
-  TemplateState pos vars <- getState
-  let indent = replicate pos ' '
-  return $ case lookup id' vars of
-             Just val  -> intercalate ('\n' : indent) $ lines val
-             Nothing   -> ""

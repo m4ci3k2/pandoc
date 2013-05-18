@@ -27,18 +27,42 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
    Portability : portable
 
 A simple templating system with variable substitution and conditionals.
-Example:
+The following program illustrates its use:
 
->>> :set -XOverloadedStrings
->>> :m + Data.Text Text.Pandoc.Templates Data.Aeson
->>> template <- either error return $ compileTemplate "Hi, $name.first$.  $if(salary)$You make $$$salary$.$else$No salary data.$endif$"
->>> putStrLn $ renderTemplate template $ object [ "name" .= object [ "first" .= "Sam", "last" .= "Jones"], "salary" .= 50000 ]
-Hi, Sam.  You make $50,000.
+> {-# LANGUAGE OverloadedStrings #-}
+> import Data.Text
+> import Data.Aeson
+> import Text.Pandoc.Templates
+>
+> data Employee = Employee { firstName :: String
+>                          , lastName  :: String
+>                          , salary    :: Maybe Int }
+> instance ToJSON Employee where
+>   toJSON e = object [ "name" .= object [ "first" .= firstName e
+>                                        , "last"  .= lastName e ]
+>                     , "salary" .= salary e ]
+>
+> employees :: [Employee]
+> employees = [ Employee "John" "Doe" Nothing
+>             , Employee "Omar" "Smith" (Just 30000)
+>             , Employee "Sara" "Chen" (Just 60000) ]
+>
+> template :: Template
+> template = either error id $ compileTemplate
+>   "$for(employee)$Hi, $employee.name.first$. $if(employee.salary)$You make $employee.salary$.$else$No salary data.$endif$$sep$\n$endfor$"
+>
+> main = putStrLn $ renderTemplate template $ object ["employee" .= employees ]
 
 A slot for an interpolated variable is a variable name surrounded
 by dollar signs.  To include a literal @$@ in your template, use
 @$$@.  Variable names must begin with a letter and can contain letters,
-numbers, @_@, and @-@.
+numbers, @_@, @-@, and @.@.
+
+The values of variables are determined by a JSON object that is
+passed as a parameter to @renderTemplate@.  So, for example,
+@title@ will return the value of the @title@ field, and
+@employee.salary@ will return the value of the @salary@ field
+of the object that is the value of the @employee@ field.
 
 The value of a variable will be indented to the same level as the
 variable.
@@ -51,19 +75,13 @@ is used.
 Conditional keywords should not be indented, or unexpected spacing
 problems may occur.
 
-If a variable name is associated with multiple values in the association
-list passed to 'renderTemplate', you may use the @$for$@ keyword to
-iterate over them:
+The @$for$@ keyword can be used to iterate over an array.  If
+the value of the associated variable is not an array, a single
+iteration will be performed on its value.
 
-> renderTemplate [("name","Sam"),("name","Joe")] $
->   "$for(name)$\nHi, $name$.\n$endfor$"
-> "Hi, Sam.\nHi, Joe."
+You may optionally specify separators using @$sep$@, as in the
+example above.
 
-You may optionally specify separators using @$sep$@:
-
-> renderTemplate [("name","Sam"),("name","Joe"),("name","Lynn")] $
->   "Hi, $for(name)$$name$$sep$, $endfor$"
-> "Hi, Sam, Joe, Lynn."
 -}
 
 module Text.Pandoc.Templates ( renderTemplate

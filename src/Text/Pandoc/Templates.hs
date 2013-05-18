@@ -66,6 +66,8 @@ You may optionally specify separators using @$sep$@:
 
 module Text.Pandoc.Templates ( renderTemplate
                              , TemplateTarget(..)
+                             , varListToJSON
+                             , compileTemplate
                              , getDefaultTemplate ) where
 
 import Data.Char (isAlphaNum)
@@ -76,8 +78,9 @@ import Data.Attoparsec.Text (Parser)
 import Control.Applicative
 import qualified Data.Text as T
 import Data.Text (Text)
+import Data.Text.Encoding (encodeUtf8)
 import Data.Monoid ((<>), Monoid(..))
-import Data.List (intersperse)
+import Data.List (intersperse, nub)
 import System.FilePath ((</>), (<.>))
 import qualified Data.Map as M
 import qualified Data.HashMap.Strict as H
@@ -85,12 +88,11 @@ import Data.Foldable (toList)
 import qualified Control.Exception.Extensible as E (try, IOException)
 #if MIN_VERSION_blaze_html(0,5,0)
 import Text.Blaze.Html (Html)
-import Text.Blaze.Internal (preEscapedString)
+import Text.Blaze.Internal (preEscapedText)
 #else
-import Text.Blaze (preEscapedString, Html)
+import Text.Blaze (preEscapedText, Html)
 #endif
-import Text.Pandoc.UTF8 (fromStringLazy)
-import Data.ByteString.Lazy (ByteString)
+import Data.ByteString.Lazy (ByteString, fromChunks)
 import Text.Pandoc.Shared (readDataFileUTF8)
 
 -- | Get default template for the specified writer.
@@ -126,38 +128,33 @@ instance Monoid Template where
   mappend (Subst f)   (Subst g)   = Subst (\c -> f c <> g c)
 
 class TemplateTarget a where
-  toTarget :: String -> a
+  toTarget :: Text -> a
 
-instance TemplateTarget String where
+instance TemplateTarget Text where
   toTarget = id
 
+instance TemplateTarget String where
+  toTarget = T.unpack
+
 instance TemplateTarget ByteString where
-  toTarget = fromStringLazy
+  toTarget = fromChunks . (:[]) . encodeUtf8
 
 instance TemplateTarget Html where
-  toTarget = preEscapedString
+  toTarget = preEscapedText
 
-renderTemplate :: TemplateTarget a
-               => [(String,String)]  -- ^ Assoc. list of values for variables
-               -> String             -- ^ Template
-               -> a
-renderTemplate assoc template =
-  toTarget $ T.unpack $ renderTemplateNew templ ctx
-  where ctx = toJSON $ toMap $ map toTexts assoc
-        toTexts (s1, s2) = (T.pack s1, T.pack s2)
-        toMap :: [(Text, Text)] -> M.Map Text Value
-        toMap ts = M.fromList $
-           map (\x -> (x, toVal [z | (y, z) <- ts, not (T.null z), y == x]))
-                              $ map fst ts
-        toVal []  = Null
+varListToJSON :: [(String, String)] -> Value
+varListToJSON assoc = toJSON $ M.fromList assoc'
+  where assoc' = [(T.pack k, toVal [T.pack z | (y,z) <- assoc,
+                                                not (null z),
+                                                y == k])
+                        | k <- nub $ map fst assoc ]
         toVal [x] = toJSON x
+        toVal []  = Null
         toVal xs  = toJSON xs
-        templ = case compileTemplate (T.pack template) of
-                     Left err -> error err
-                     Right t  -> t
 
-renderTemplateNew :: ToJSON a => Template -> a -> Text
-renderTemplateNew template context = renderTemplate' template (toJSON context)
+renderTemplate :: (ToJSON a, TemplateTarget b) => Template -> a -> b
+renderTemplate template context =
+  toTarget $ renderTemplate' template (toJSON context)
 
 renderTemplate' :: Template -> Value -> Text
 renderTemplate' (Literal b) _ = b

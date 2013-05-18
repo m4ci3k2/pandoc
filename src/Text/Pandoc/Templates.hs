@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, CPP, OverloadedStrings #-}
 {-
-Copyright (C) 2009-2010 John MacFarlane <jgm@berkeley.edu>
+Copyright (C) 2009-2013 John MacFarlane <jgm@berkeley.edu>
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 {- |
    Module      : Text.Pandoc.Templates
-   Copyright   : Copyright (C) 2009-2010 John MacFarlane
+   Copyright   : Copyright (C) 2009-2013 John MacFarlane
    License     : GNU GPL, version 2 or above
 
    Maintainer  : John MacFarlane <jgm@berkeley.edu>
@@ -29,9 +29,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 A simple templating system with variable substitution and conditionals.
 Example:
 
-> renderTemplate [("name","Sam"),("salary","50,000")] $
->    "Hi, $name$.  $if(salary)$You make $$$salary$.$else$No salary data.$endif$"
-> "Hi, John.  You make $50,000."
+>>> :set -XOverloadedStrings
+>>> :m + Data.Text Text.Pandoc.Templates Data.Aeson
+>>> template <- either error return $ compileTemplate "Hi, $name.first$.  $if(salary)$You make $$$salary$.$else$No salary data.$endif$"
+>>> putStrLn $ renderTemplate template $ object [ "name" .= object [ "first" .= "Sam", "last" .= "Jones"], "salary" .= 50000 ]
+Hi, Sam.  You make $50,000.
 
 A slot for an interpolated variable is a variable name surrounded
 by dollar signs.  To include a literal @$@ in your template, use
@@ -68,6 +70,7 @@ module Text.Pandoc.Templates ( renderTemplate
                              , TemplateTarget(..)
                              , varListToJSON
                              , compileTemplate
+                             , Template
                              , getDefaultTemplate ) where
 
 import Data.Char (isAlphaNum)
@@ -127,6 +130,11 @@ instance Monoid Template where
   mappend (Subst f)   (Literal x) = Subst (\c -> f c <> Literal x)
   mappend (Subst f)   (Subst g)   = Subst (\c -> f c <> g c)
 
+evaluate :: Template -> Value -> Template
+evaluate Empty _         = Empty
+evaluate (Literal t) _   = Literal t
+evaluate (Subst f)   val = f val
+
 class TemplateTarget a where
   toTarget :: Text -> a
 
@@ -173,7 +181,7 @@ resolveVar var' val =
        Just (Array vec) -> mconcat $ map (resolveVar []) $ toList vec
        Just (String t)  -> Literal $ T.stripEnd t
        Just (Number n)  -> Literal $ T.pack $ show n
-       Just (Bool True) -> Literal "True"
+       Just (Bool True) -> Literal "true"
        Just _           -> Empty
        Nothing          -> Empty
 
@@ -188,8 +196,8 @@ lit = Literal
 cond :: Variable -> Template -> Template -> Template
 cond var' ifyes ifno = Subst $ \val ->
   case resolveVar var' val of
-       Empty -> ifno
-       _     -> ifyes
+       Empty -> evaluate ifno val
+       _     -> evaluate ifyes val
 
 iter :: Variable -> Template -> Template -> Template
 iter var' template sep = Subst $ \val ->

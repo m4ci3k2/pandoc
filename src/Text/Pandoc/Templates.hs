@@ -135,21 +135,17 @@ getDefaultTemplate user writer = do
 
 data Template = Literal Text
               | Subst (Value -> Template)
-              | Empty
 
 type Variable = [Text]
 
 instance Monoid Template where
-  mempty = Empty
-  mappend Empty       x           = x
-  mappend x           Empty       = x
+  mempty = Literal mempty
   mappend (Literal x) (Literal y) = Literal (x <> y)
   mappend (Literal x) (Subst f)   = Subst (\c -> Literal x <> f c)
   mappend (Subst f)   (Literal x) = Subst (\c -> f c <> Literal x)
   mappend (Subst f)   (Subst g)   = Subst (\c -> f c <> g c)
 
 evaluate :: Template -> Value -> Template
-evaluate Empty _         = Empty
 evaluate (Literal t) _   = Literal t
 evaluate (Subst f)   val = f val
 
@@ -185,7 +181,6 @@ renderTemplate template context =
 renderTemplate' :: Template -> Value -> Text
 renderTemplate' (Literal b) _ = b
 renderTemplate' (Subst f) ctx = renderTemplate' (f ctx) ctx
-renderTemplate' Empty _ = mempty
 
 compileTemplate :: Text -> Either String Template
 compileTemplate template = A.parseOnly pTemplate template
@@ -200,8 +195,8 @@ resolveVar var' val =
        Just (String t)  -> Literal $ T.stripEnd t
        Just (Number n)  -> Literal $ T.pack $ show n
        Just (Bool True) -> Literal "true"
-       Just _           -> Empty
-       Nothing          -> Empty
+       Just _           -> Literal mempty
+       Nothing          -> Literal mempty
 
 multiLookup :: [Text] -> Value -> Maybe Value
 multiLookup [] x = Just x
@@ -214,8 +209,8 @@ lit = Literal
 cond :: Variable -> Template -> Template -> Template
 cond var' ifyes ifno = Subst $ \val ->
   case resolveVar var' val of
-       Empty -> evaluate ifno val
-       _     -> evaluate ifyes val
+       Literal "" -> evaluate ifno val
+       _          -> evaluate ifyes val
 
 iter :: Variable -> Template -> Template -> Template
 iter var' template sep = Subst $ \val ->
@@ -228,7 +223,6 @@ iter var' template sep = Subst $ \val ->
 
 setVar :: Template -> Variable -> Value -> Template
 setVar (Literal b) _   _   = Literal b
-setVar Empty       _   _   = Empty
 setVar (Subst f)   v   new = Subst $ \old -> f (replaceVar v new old)
 
 replaceVar :: Variable -> Value -> Value -> Value
@@ -302,7 +296,7 @@ pConditional = do
   -- if newline after the "if", then a newline after "endif" will be swallowed
   multiline <- A.option False (True <$ skipEndline)
   ifContents <- pTemplate
-  elseContents <- A.option Empty $
+  elseContents <- A.option mempty $
                       do A.string "$else$"
                          when multiline $ A.option () skipEndline
                          pTemplate
@@ -318,7 +312,7 @@ pFor = do
   -- if newline after the "for", then a newline after "endfor" will be swallowed
   multiline <- A.option False $ skipEndline >> return True
   contents <- pTemplate
-  sep <- A.option Empty $
+  sep <- A.option mempty $
            do A.string "$sep$"
               when multiline $ A.option () skipEndline
               pTemplate
@@ -328,7 +322,6 @@ pFor = do
 
 indent :: Int -> Template -> Template
 indent 0   x           = x
-indent _   Empty       = Empty
 indent ind (Literal t) = Literal $ T.concat $ intersperse sep $ T.lines t
    where sep = "\n" <> T.replicate ind " "
 indent ind (Subst f)   = Subst $ \val -> indent ind (f val)

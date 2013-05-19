@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, CPP, OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, CPP,
+    OverloadedStrings, GeneralizedNewtypeDeriving #-}
 {-
 Copyright (C) 2009-2013 John MacFarlane <jgm@berkeley.edu>
 
@@ -133,21 +134,10 @@ getDefaultTemplate user writer = do
        _        -> let fname = "templates" </> "default" <.> format
                    in  E.try $ readDataFileUTF8 user fname
 
-data Template = Literal Text
-              | Subst (Value -> Template)
+newtype Template = Template { unTemplate :: Value -> Text }
+                 deriving Monoid
 
 type Variable = [Text]
-
-instance Monoid Template where
-  mempty = Literal mempty
-  mappend (Literal x) (Literal y) = Literal (x <> y)
-  mappend (Literal x) (Subst f)   = Subst (\c -> Literal x <> f c)
-  mappend (Subst f)   (Literal x) = Subst (\c -> f c <> Literal x)
-  mappend (Subst f)   (Subst g)   = Subst (\c -> f c <> g c)
-
-evaluate :: Template -> Value -> Template
-evaluate (Literal t) _   = Literal t
-evaluate (Subst f)   val = f val
 
 class TemplateTarget a where
   toTarget :: Text -> a
@@ -177,26 +167,23 @@ varListToJSON assoc = toJSON $ M.fromList assoc'
 renderTemplate :: (ToJSON a, TemplateTarget b) => Template -> a -> b
 renderTemplate template context =
   toTarget $ renderTemplate' template (toJSON context)
-
-renderTemplate' :: Template -> Value -> Text
-renderTemplate' (Literal b) _ = b
-renderTemplate' (Subst f) ctx = renderTemplate' (f ctx) ctx
+   where renderTemplate' (Template f) val = f val
 
 compileTemplate :: Text -> Either String Template
 compileTemplate template = A.parseOnly pTemplate template
 
 var :: Variable -> Template
-var = Subst . resolveVar
+var = Template . resolveVar
 
-resolveVar :: Variable -> Value -> Template
+resolveVar :: Variable -> Value -> Text
 resolveVar var' val =
   case multiLookup var' val of
        Just (Array vec) -> mconcat $ map (resolveVar []) $ toList vec
-       Just (String t)  -> Literal $ T.stripEnd t
-       Just (Number n)  -> Literal $ T.pack $ show n
-       Just (Bool True) -> Literal "true"
-       Just _           -> Literal mempty
-       Nothing          -> Literal mempty
+       Just (String t)  -> T.stripEnd t
+       Just (Number n)  -> T.pack $ show n
+       Just (Bool True) -> "true"
+       Just _           -> mempty
+       Nothing          -> mempty
 
 multiLookup :: [Text] -> Value -> Maybe Value
 multiLookup [] x = Just x
@@ -204,26 +191,25 @@ multiLookup (v:vs) (Object o) = H.lookup v o >>= multiLookup vs
 multiLookup _ _ = Nothing
 
 lit :: Text -> Template
-lit = Literal
+lit = Template . const
 
 cond :: Variable -> Template -> Template -> Template
-cond var' ifyes ifno = Subst $ \val ->
+cond var' (Template ifyes) (Template ifno) = Template $ \val ->
   case resolveVar var' val of
-       Literal "" -> evaluate ifno val
-       _          -> evaluate ifyes val
+       "" -> ifno val
+       _  -> ifyes val
 
 iter :: Variable -> Template -> Template -> Template
-iter var' template sep = Subst $ \val ->
-  case multiLookup var' val of
-       Just (Array vec) -> mconcat $ intersperse sep
-                                   $ map (setVar template var')
-                                   $ toList vec
-       Just x           -> setVar template var' x
-       Nothing          -> mempty
+iter var' template sep = Template $ \val -> unTemplate
+  (case multiLookup var' val of
+           Just (Array vec) -> mconcat $ intersperse sep
+                                       $ map (setVar template var')
+                                       $ toList vec
+           Just x           -> setVar template var' x
+           Nothing          -> mempty) val
 
 setVar :: Template -> Variable -> Value -> Template
-setVar (Literal b) _   _   = Literal b
-setVar (Subst f)   v   new = Subst $ \old -> f (replaceVar v new old)
+setVar (Template f) var' val = Template $ f . replaceVar var' val
 
 replaceVar :: Variable -> Value -> Value -> Value
 replaceVar []     new _          = new
@@ -321,8 +307,7 @@ pFor = do
   return $ iter id' contents sep
 
 indent :: Int -> Template -> Template
-indent 0   x           = x
-indent ind (Literal t) = Literal $ T.concat $ intersperse sep $ T.lines t
-   where sep = "\n" <> T.replicate ind " "
-indent ind (Subst f)   = Subst $ \val -> indent ind (f val)
-
+indent 0   x            = x
+indent ind (Template f) = Template $ \val -> indent' (f val)
+  where indent' t = T.concat
+                    $ intersperse ("\n" <> T.replicate ind " ") $ T.lines t

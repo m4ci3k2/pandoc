@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, CPP #-}
 {-
-Copyright (C) 2006-2010 John MacFarlane <jgm@berkeley.edu>
+Copyright (C) 2006-2013 John MacFarlane <jgm@berkeley.edu>
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 {- |
    Module      : Text.Pandoc.Shared
-   Copyright   : Copyright (C) 2006-2010 John MacFarlane
+   Copyright   : Copyright (C) 2006-2013 John MacFarlane
    License     : GNU GPL, version 2 or above
 
    Maintainer  : John MacFarlane <jgm@berkeley.edu>
@@ -62,6 +62,7 @@ module Text.Pandoc.Shared (
                      headerShift,
                      isTightList,
                      makeMeta,
+                     metaToJSON,
                      -- * TagSoup HTML handling
                      renderTags',
                      -- * File handling
@@ -106,6 +107,11 @@ import qualified Data.ByteString.Char8 as B8
 import Network.HTTP (findHeader, rspBody,
                      RequestMethod(..), HeaderName(..), mkRequest)
 import Network.Browser (browse, setAllowRedirects, setOutHandler, request)
+import qualified Data.Traversable as Traversable
+import qualified Data.HashMap.Strict as H
+import qualified Data.Text as T
+import Data.Aeson (ToJSON (..), Value(Object))
+
 #ifdef EMBED_DATA_FILES
 import Text.Pandoc.Data (dataFiles)
 import System.FilePath ( joinPath, splitDirectories )
@@ -501,6 +507,32 @@ makeMeta title authors date =
                     ,("author", MetaList $ map toblocks authors)
                     ,("date", toblocks date)]
     where toblocks xs = MetaBlocks [Plain xs]
+
+-- | Create JSON value for template from a 'Meta' and an association list
+-- of variables, specified at the command line or in the writer.
+-- Variables overwrite metadata fields with the same names.
+metaToJSON :: (Monad m, Functor m)
+           => ([Block] -> m String) -- ^ Writer for output format
+           -> Meta                  -- ^ Metadata
+           -> [(String, String)]    -- ^ Extra variables
+           -> m Value
+metaToJSON writer (Meta metamap) vars =
+  (addVariablesToJSON vars . toJSON) `fmap`
+    Traversable.mapM (metaValueToJSON writer) metamap
+
+metaValueToJSON :: (Monad m, Functor m) => ([Block] -> m String) -> MetaValue -> m Value
+metaValueToJSON writer (MetaMap metamap) =
+  toJSON `fmap` Traversable.mapM (metaValueToJSON writer) metamap
+metaValueToJSON writer (MetaList xs) =
+  toJSON `fmap` Traversable.mapM (metaValueToJSON writer) xs
+metaValueToJSON _ (MetaString s) = return $ toJSON s
+metaValueToJSON writer (MetaBlocks bs) = toJSON `fmap` writer bs
+
+addVariablesToJSON :: [(String, String)] -> Value -> Value
+addVariablesToJSON vars (Object hashmap) = Object $
+  foldl (\hm (k,v) -> H.insert (T.pack k) (toJSON v) hm) hashmap vars
+addVariablesToJSON _ x = x
+
 
 --
 -- TagSoup HTML handling

@@ -63,6 +63,7 @@ module Text.Pandoc.Shared (
                      isTightList,
                      makeMeta,
                      metaToJSON,
+                     setField,
                      -- * TagSoup HTML handling
                      renderTags',
                      -- * File handling
@@ -110,7 +111,7 @@ import Network.Browser (browse, setAllowRedirects, setOutHandler, request)
 import qualified Data.Traversable as Traversable
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
-import Data.Aeson (ToJSON (..), Value(Object))
+import Data.Aeson (ToJSON (..), Value(Object), fromJSON, Result(..))
 
 #ifdef EMBED_DATA_FILES
 import Text.Pandoc.Data (dataFiles)
@@ -514,13 +515,14 @@ makeMeta title authors date =
 metaToJSON :: (Monad m, Functor m)
            => ([Block] -> m String) -- ^ Writer for output format
            -> Meta                  -- ^ Metadata
-           -> [(String, String)]    -- ^ Extra variables
            -> m Value
-metaToJSON writer (Meta metamap) vars =
-  (addVariablesToJSON vars . toJSON) `fmap`
-    Traversable.mapM (metaValueToJSON writer) metamap
+metaToJSON writer (Meta metamap) =
+  toJSON `fmap` Traversable.mapM (metaValueToJSON writer) metamap
 
-metaValueToJSON :: (Monad m, Functor m) => ([Block] -> m String) -> MetaValue -> m Value
+metaValueToJSON :: (Monad m, Functor m)
+                => ([Block] -> m String)
+                -> MetaValue
+                -> m Value
 metaValueToJSON writer (MetaMap metamap) =
   toJSON `fmap` Traversable.mapM (metaValueToJSON writer) metamap
 metaValueToJSON writer (MetaList xs) =
@@ -528,11 +530,21 @@ metaValueToJSON writer (MetaList xs) =
 metaValueToJSON _ (MetaString s) = return $ toJSON s
 metaValueToJSON writer (MetaBlocks bs) = toJSON `fmap` writer bs
 
-addVariablesToJSON :: [(String, String)] -> Value -> Value
-addVariablesToJSON vars (Object hashmap) = Object $
-  foldl (\hm (k,v) -> H.insert (T.pack k) (toJSON v) hm) hashmap vars
-addVariablesToJSON _ x = x
-
+setField :: ToJSON a
+         => String
+         -> a
+         -> Value
+         -> Value
+-- | Set a field of a JSON object.  If the field already has a value,
+-- convert it into a list with the new value appended to the old value(s).
+-- This is a utility function to be used in preparing template contexts.
+setField field val (Object hashmap) =
+  Object $ H.insertWith combine (T.pack field) (toJSON val) hashmap
+  where combine newval oldval =
+          case fromJSON oldval of
+                Success xs  -> toJSON $ xs ++ [newval]
+                _           -> toJSON [oldval, newval]
+setField _ _  x = x
 
 --
 -- TagSoup HTML handling

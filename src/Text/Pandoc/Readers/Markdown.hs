@@ -196,12 +196,12 @@ dateLine = try $ do
   skipSpaces
   trimInlinesF . mconcat <$> manyTill inline newline
 
-titleBlock :: MarkdownParser (F Inlines, F [Inlines], F Inlines)
+titleBlock :: MarkdownParser (F (Pandoc -> Pandoc))
 titleBlock = pandocTitleBlock
          <|> mmdTitleBlock
-         <|> return (mempty, return [], mempty)
+         <|> return (return id)
 
-pandocTitleBlock :: MarkdownParser (F Inlines, F [Inlines], F Inlines)
+pandocTitleBlock :: MarkdownParser (F (Pandoc -> Pandoc))
 pandocTitleBlock = try $ do
   guardEnabled Ext_pandoc_title_block
   lookAhead (char '%')
@@ -209,25 +209,33 @@ pandocTitleBlock = try $ do
   author <- option (return []) authorsLine
   date <- option mempty dateLine
   optional blanklines
-  return (title, author, date)
+  return $ do
+    title' <- title
+    author' <- author
+    date' <- date
+    return $ B.setMeta "title" title'
+           . B.setMeta "author" author'
+           . B.setMeta "date" date'
 
-mmdTitleBlock :: MarkdownParser (F Inlines, F [Inlines], F Inlines)
+mmdTitleBlock :: MarkdownParser (F (Pandoc -> Pandoc))
 mmdTitleBlock = try $ do
   guardEnabled Ext_mmd_title_block
   kvPairs <- many1 kvPair
   blanklines
-  let title = maybe mempty return $ lookup "title" kvPairs
-  let author = maybe mempty (\x -> return [x]) $ lookup "author" kvPairs
-  let date = maybe mempty return $ lookup "date" kvPairs
-  return (title, author, date)
+  return $ return $ \(Pandoc m bs) -> Pandoc (foldl addpair m kvPairs) bs
 
-kvPair :: MarkdownParser (String, Inlines)
+addpair :: Meta -> (String, String) -> Meta
+addpair (Meta m) (k,v) = Meta $ M.insertWith combine k (MetaString v) m
+  where combine newval (MetaList xs) = MetaList (xs ++ [newval])
+        combine newval x             = MetaList [x, newval]
+
+kvPair :: MarkdownParser (String, String)
 kvPair = try $ do
   key <- many1Till (alphaNum <|> oneOf "_- ") (char ':')
   val <- manyTill anyChar
           (try $ newline >> lookAhead (blankline <|> nonspaceChar))
   let key' = concat $ words $ map toLower key
-  let val' = trimInlines $ B.text val
+  let val' = trim val
   return (key',val')
 
 parseMarkdown :: MarkdownParser Pandoc
@@ -236,16 +244,15 @@ parseMarkdown = do
   updateState $ \state -> state { stateOptions =
                 let oldOpts = stateOptions state in
                     oldOpts{ readerParseRaw = True } }
-  (title, authors, date) <- option (mempty,return [],mempty) titleBlock
+  titleTrans <- option (return id) titleBlock
   blocks <- parseBlocks
   st <- getState
   mbsty <- getOption readerCitationStyle
   refs <- getOption readerReferences
   return $ processBiblio mbsty refs
-         $ B.setTitle (runF title st)
-         $ B.setAuthors (runF authors st)
-         $ B.setDate (runF date st)
-         $ B.doc $ runF blocks st
+         $ runF titleTrans st
+         $ B.doc
+         $ runF blocks st
 
 addWarning :: Maybe SourcePos -> String -> MarkdownParser ()
 addWarning mbpos msg =

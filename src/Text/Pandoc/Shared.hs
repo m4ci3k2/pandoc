@@ -61,6 +61,7 @@ module Text.Pandoc.Shared (
                      isHeaderBlock,
                      headerShift,
                      isTightList,
+                     addMetaField,
                      makeMeta,
                      metaToJSON,
                      setField,
@@ -500,14 +501,25 @@ isTightList = and . map firstIsPlain
   where firstIsPlain (Plain _ : _) = True
         firstIsPlain _             = False
 
+-- | Set a field of a 'Meta' object.  If the field already has a value,
+-- convert it into a list with the new value appended to the old value(s).
+addMetaField :: String
+             -> MetaValue
+             -> Meta
+             -> Meta
+addMetaField key val (Meta meta) = Meta $ M.insertWith combine key val meta
+  where combine newval (MetaList xs) = MetaList (xs ++ [newval])
+        combine newval x             = MetaList [x, newval]
+
 -- | Create 'Meta' from old-style title, authors, date.  This is
 -- provided to ease the transition from the old API.
 makeMeta :: [Inline] -> [[Inline]] -> [Inline] -> Meta
 makeMeta title authors date =
-  Meta $ M.fromList [("title", toblocks title)
-                    ,("author", MetaList $ map toblocks authors)
-                    ,("date", toblocks date)]
-    where toblocks xs = MetaBlocks [Plain xs]
+    addMetaField "title" (toblocks title)
+    $ addMetaField "author" (MetaList $ map toblocks authors)
+    $ addMetaField "date" (toblocks date)
+    $ nullMeta
+  where toblocks xs = MetaBlocks [Plain xs]
 
 -- | Create JSON value for template from a 'Meta' and an association list
 -- of variables, specified at the command line or in the writer.

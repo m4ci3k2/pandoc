@@ -222,20 +222,16 @@ mmdTitleBlock = try $ do
   guardEnabled Ext_mmd_title_block
   kvPairs <- many1 kvPair
   blanklines
-  return $ return $ \(Pandoc m bs) -> Pandoc (foldl addpair m kvPairs) bs
+  return $ return $ \(Pandoc m bs) ->
+             Pandoc (foldl (\m' (k,v) -> addMetaField k v m') m kvPairs) bs
 
-addpair :: Meta -> (String, String) -> Meta
-addpair (Meta m) (k,v) = Meta $ M.insertWith combine k (MetaString v) m
-  where combine newval (MetaList xs) = MetaList (xs ++ [newval])
-        combine newval x             = MetaList [x, newval]
-
-kvPair :: MarkdownParser (String, String)
+kvPair :: MarkdownParser (String, MetaValue)
 kvPair = try $ do
   key <- many1Till (alphaNum <|> oneOf "_- ") (char ':')
   val <- manyTill anyChar
           (try $ newline >> lookAhead (blankline <|> nonspaceChar))
   let key' = concat $ words $ map toLower key
-  let val' = trim val
+  let val' = MetaBlocks $ B.toList $ B.plain $ B.text $ trim val
   return (key',val')
 
 parseMarkdown :: MarkdownParser Pandoc

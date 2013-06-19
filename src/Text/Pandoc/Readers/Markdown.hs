@@ -37,7 +37,13 @@ import Data.Ord ( comparing )
 import Data.Char ( isAlphaNum, toLower )
 import Data.Maybe
 import Text.Pandoc.Definition
+import qualified Data.Text as T
+import Data.Text (Text)
+import qualified Data.Yaml as Yaml
+import qualified Data.HashMap.Strict as H
 import qualified Text.Pandoc.Builder as B
+import qualified Text.Pandoc.UTF8 as UTF8
+import qualified Data.Vector as V
 import Text.Pandoc.Builder (Inlines, Blocks, trimInlines, (<>))
 import Text.Pandoc.Options
 import Text.Pandoc.Shared
@@ -198,6 +204,7 @@ dateLine = try $ do
 
 titleBlock :: MarkdownParser (F (Pandoc -> Pandoc))
 titleBlock = pandocTitleBlock
+         <|> yamlTitleBlock
          <|> mmdTitleBlock
          <|> return (return id)
 
@@ -216,6 +223,45 @@ pandocTitleBlock = try $ do
     return $ B.setMeta "title" title'
            . B.setMeta "author" author'
            . B.setMeta "date" date'
+
+yamlTitleBlock :: MarkdownParser (F (Pandoc -> Pandoc))
+yamlTitleBlock = try $ do
+  guardEnabled Ext_yaml_title_block
+  string "---"
+  blankline
+  rawYaml <- unlines <$> manyTill anyLine stopLine
+  optional blanklines
+  return $ return $
+    case Yaml.decode $ UTF8.fromString rawYaml of
+       Just (Yaml.Object hashmap) ->
+                H.foldrWithKey (\k v f ->
+                     if ignorable k
+                        then f
+                        else B.setMeta (T.unpack k) (yamlToMeta v) . f)
+                  id hashmap
+       _                    -> fail "Could not parse yaml object"
+
+-- ignore fields ending with _
+ignorable :: Text -> Bool
+ignorable t = (T.pack "_") `T.isSuffixOf` t
+
+toBlocks :: ReaderOptions -> Text -> [Block]
+toBlocks opts x = let (Pandoc _ bs) = readMarkdown opts (T.unpack x) in bs
+
+yamlToMeta :: Yaml.Value -> MetaValue
+yamlToMeta (Yaml.String t) = MetaBlocks $ toBlocks def {- TODO -} t
+yamlToMeta (Yaml.Number n) = MetaString $ show n
+yamlToMeta (Yaml.Bool b) = MetaString $ map toLower $ show b
+yamlToMeta (Yaml.Array xs) = B.toMetaValue $ map yamlToMeta $ V.toList xs
+yamlToMeta (Yaml.Object o) = MetaMap $ H.foldrWithKey (\k v m ->
+                                if ignorable k
+                                   then m
+                                   else M.insert (T.unpack k) (yamlToMeta v) m)
+                               M.empty o
+yamlToMeta _ = MetaString ""
+
+stopLine :: MarkdownParser ()
+stopLine = try $ (string "---" <|> string "...") >> blankline >> return ()
 
 mmdTitleBlock :: MarkdownParser (F (Pandoc -> Pandoc))
 mmdTitleBlock = try $ do

@@ -40,7 +40,6 @@ import Data.List ( findIndex, intersperse, intercalate,
                    transpose, sort, deleteFirstsBy, isSuffixOf )
 import qualified Data.Map as M
 import Text.Printf ( printf )
-import Data.Maybe ( catMaybes )
 import Control.Applicative ((<$>), (<$), (<*), (*>))
 import Text.Pandoc.Builder (Inlines, Blocks, trimInlines, (<>))
 import qualified Text.Pandoc.Builder as B
@@ -88,16 +87,30 @@ promoteHeaders _   [] = []
 
 -- | If list of blocks starts with a header (or a header and subheader)
 -- of level that are not found elsewhere, return it as a title and
--- promote all the other headers.
-titleTransform :: [Block]              -- ^ list of blocks
-               -> ([Block], [Inline])  -- ^ modified list of blocks, title
-titleTransform ((Header 1 _ head1):(Header 2 _ head2):rest) |
-   not (any (isHeader 1) rest || any (isHeader 2) rest) =  -- both title & subtitle
-   (promoteHeaders 2 rest, head1 ++ [Str ":", Space] ++ head2)
-titleTransform ((Header 1 _ head1):rest) |
-   not (any (isHeader 1) rest) =  -- title, no subtitle
-   (promoteHeaders 1 rest, head1)
-titleTransform blocks = (blocks, [])
+-- promote all the other headers.  Also process a definition list right
+-- after the title block as metadata.
+titleTransform :: ([Block], Meta)  -- ^ list of blocks, metadata
+               -> ([Block], Meta)  -- ^ modified list of blocks, metadata
+titleTransform (bs, meta) =
+  let (bs', meta') =
+       case bs of
+          ((Header 1 _ head1):(Header 2 _ head2):rest)
+           | not (any (isHeader 1) rest || any (isHeader 2) rest) -> -- tit/sub
+            (promoteHeaders 2 rest, setMeta "title"
+               (fromList $ head1 ++ [Str ":", Space] ++ head2) meta)
+          ((Header 1 _ head1):rest)
+           | not (any (isHeader 1) rest) -> -- title only
+            (promoteHeaders 1 rest,
+                setMeta "title" (fromList head1) meta)
+          _ -> (bs, meta)
+  in   case bs' of
+          (DefinitionList ds : rest) ->
+            (rest, metaFromDefList ds meta')
+          _ -> (bs', meta')
+
+metaFromDefList :: [([Inline], [[Block]])] -> Meta -> Meta
+metaFromDefList ds meta = foldr f meta ds
+ where f (k,v) = setMeta (map toLower $ stringify k) (mconcat $ map fromList v)
 
 parseRST :: RSTParser Pandoc
 parseRST = do
@@ -115,14 +128,11 @@ parseRST = do
   -- now parse it for real...
   blocks <- B.toList <$> parseBlocks
   standalone <- getOption readerStandalone
-  let (blocks', title) = if standalone
-                            then titleTransform blocks
-                            else (blocks, [])
   state <- getState
   let meta = stateMeta state
-  let meta' = if null title
-                 then meta
-                 else setMeta "title" (fromList title) meta
+  let (blocks', meta') = if standalone
+                            then titleTransform (blocks, meta)
+                            else (blocks, meta)
   return $ Pandoc meta' blocks'
 
 --
@@ -165,36 +175,19 @@ rawFieldListItem indent = try $ do
   return (name, raw)
 
 fieldListItem :: String
-              -> RSTParser (Maybe (Inlines, [Blocks]))
+              -> RSTParser (Inlines, [Blocks])
 fieldListItem indent = try $ do
   (name, raw) <- rawFieldListItem indent
   let term = B.str name
   contents <- parseFromString parseBlocks raw
   optional blanklines
-  case name of
-       "Author" -> do
-           updateState $ \st ->
-             st{ stateMeta = setMeta "author" contents $ stateMeta st }
-           return Nothing
-       "Authors" -> do
-           updateState $ \st ->
-             st{ stateMeta = setMeta "author" contents $ stateMeta st }
-           return Nothing
-       "Date" -> do
-           updateState $ \st ->
-             st{ stateMeta = setMeta "date" contents $ stateMeta st }
-           return Nothing
-       "Title" -> do
-           updateState $ \st ->
-             st{ stateMeta = setMeta "title" contents $ stateMeta st }
-           return Nothing
-       _            -> return $ Just (term, [contents])
+  return (term, [contents])
 
 fieldList :: RSTParser Blocks
 fieldList = try $ do
   indent <- lookAhead $ many spaceChar
   items <- many1 $ fieldListItem indent
-  case catMaybes items of
+  case items of
      []     -> return mempty
      items' -> return $ B.definitionList items'
 

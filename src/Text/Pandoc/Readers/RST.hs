@@ -31,6 +31,7 @@ module Text.Pandoc.Readers.RST (
                                 readRST
                                ) where
 import Text.Pandoc.Definition
+import Text.Pandoc.Builder (setMeta, fromList)
 import Text.Pandoc.Shared
 import Text.Pandoc.Parsing
 import Text.Pandoc.Options
@@ -118,10 +119,11 @@ parseRST = do
                             then titleTransform blocks
                             else (blocks, [])
   state <- getState
-  let authors = stateAuthors state
-  let date = stateDate state
-  let title' = if null title then stateTitle state else title
-  return $ Pandoc (makeMeta title' authors date) blocks'
+  let meta = stateMeta state
+  let meta' = if null title
+                 then meta
+                 else setMeta "title" (fromList title) meta
+  return $ Pandoc meta' blocks'
 
 --
 -- parsing blocks
@@ -169,26 +171,24 @@ fieldListItem indent = try $ do
   let term = B.str name
   contents <- parseFromString parseBlocks raw
   optional blanklines
-  case (name, B.toList contents) of
-       ("Author", x) -> do
+  case name of
+       "Author" -> do
            updateState $ \st ->
-             st{ stateAuthors = stateAuthors st ++ [extractContents x] }
+             st{ stateMeta = setMeta "author" contents $ stateMeta st }
            return Nothing
-       ("Authors", [BulletList auths]) -> do
-           updateState $ \st -> st{ stateAuthors = map extractContents auths }
+       "Authors" -> do
+           updateState $ \st ->
+             st{ stateMeta = setMeta "author" contents $ stateMeta st }
            return Nothing
-       ("Date", x) -> do
-           updateState $ \st -> st{ stateDate = extractContents x }
+       "Date" -> do
+           updateState $ \st ->
+             st{ stateMeta = setMeta "date" contents $ stateMeta st }
            return Nothing
-       ("Title", x) -> do
-           updateState $ \st -> st{ stateTitle = extractContents x }
+       "Title" -> do
+           updateState $ \st ->
+             st{ stateMeta = setMeta "title" contents $ stateMeta st }
            return Nothing
        _            -> return $ Just (term, [contents])
-
-extractContents :: [Block] -> [Inline]
-extractContents [Plain auth] = auth
-extractContents [Para auth]  = auth
-extractContents _            = []
 
 fieldList :: RSTParser Blocks
 fieldList = try $ do

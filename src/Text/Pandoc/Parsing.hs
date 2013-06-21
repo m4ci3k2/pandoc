@@ -799,9 +799,7 @@ data ParserState = ParserState
       stateSubstitutions   :: SubstTable,    -- ^ List of substitution references
       stateNotes           :: NoteTable,     -- ^ List of notes (raw bodies)
       stateNotes'          :: NoteTable',    -- ^ List of notes (parsed bodies)
-      stateTitle           :: [Inline],      -- ^ Title of document
-      stateAuthors         :: [[Inline]],    -- ^ Authors of document
-      stateDate            :: [Inline],      -- ^ Date of document
+      stateMeta            :: Meta,          -- ^ Document metadata
       stateHeaderTable     :: [HeaderType],  -- ^ Ordered list of header types used
       stateHeaders         :: M.Map Inlines String, -- ^ List of headers and ids (used for implicit ref links)
       stateIdentifiers     :: [String],      -- ^ List of header identifiers used
@@ -828,9 +826,7 @@ defaultParserState =
                   stateSubstitutions   = M.empty,
                   stateNotes           = [],
                   stateNotes'          = [],
-                  stateTitle           = [],
-                  stateAuthors         = [],
-                  stateDate            = [],
+                  stateMeta            = nullMeta,
                   stateHeaderTable     = [],
                   stateHeaders         = M.empty,
                   stateIdentifiers     = [],

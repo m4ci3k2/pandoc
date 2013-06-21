@@ -96,8 +96,8 @@ titleTransform (bs, meta) =
        case bs of
           ((Header 1 _ head1):(Header 2 _ head2):rest)
            | not (any (isHeader 1) rest || any (isHeader 2) rest) -> -- tit/sub
-            (promoteHeaders 2 rest, setMeta "title"
-               (fromList $ head1 ++ [Str ":", Space] ++ head2) meta)
+            (promoteHeaders 2 rest, setMeta "title" (fromList head1) $
+              setMeta "subtitle" (fromList head2) meta)
           ((Header 1 _ head1):rest)
            | not (any (isHeader 1) rest) -> -- title only
             (promoteHeaders 1 rest,

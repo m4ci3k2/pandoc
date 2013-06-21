@@ -304,7 +304,7 @@ Library
                    -- Text.Pandoc.Writers.Docbook,
                    -- Text.Pandoc.Writers.OPML,
                    Text.Pandoc.Writers.HTML,
-                   -- Text.Pandoc.Writers.LaTeX,
+                   Text.Pandoc.Writers.LaTeX,
                    -- Text.Pandoc.Writers.ConTeXt,
                    -- Text.Pandoc.Writers.OpenDocument,
                    -- Text.Pandoc.Writers.Texinfo,

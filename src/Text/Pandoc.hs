@@ -84,7 +84,7 @@ module Text.Pandoc
                , writeHtml
                , writeHtmlString
                , writeDocbook
-               -- , writeOPML
+               , writeOPML
                -- , writeOpenDocument
                , writeMan
                -- , writeMediaWiki
@@ -121,7 +121,7 @@ import Text.Pandoc.Readers.Textile
 import Text.Pandoc.Readers.Native
 import Text.Pandoc.Readers.Haddock
 import Text.Pandoc.Writers.Native
--- import Text.Pandoc.Writers.Markdown
+import Text.Pandoc.Writers.Markdown
 -- import Text.Pandoc.Writers.RST
 import Text.Pandoc.Writers.LaTeX
 import Text.Pandoc.Writers.ConTeXt
@@ -132,7 +132,7 @@ import Text.Pandoc.Writers.HTML
 -- import Text.Pandoc.Writers.EPUB
 -- import Text.Pandoc.Writers.FB2
 import Text.Pandoc.Writers.Docbook
--- import Text.Pandoc.Writers.OPML
+import Text.Pandoc.Writers.OPML
 -- import Text.Pandoc.Writers.OpenDocument
 import Text.Pandoc.Writers.Man
 -- import Text.Pandoc.Writers.RTF
@@ -198,11 +198,11 @@ readers = [("native"       , \_ s -> return $ readNative s)
            ,("markdown_phpextra" , markdown)
            ,("markdown_github" , markdown)
            ,("markdown_mmd",  markdown)
---           ,("rst"          , \o s -> return $ readRST o s)
---           ,("mediawiki"    , \o s -> return $ readMediaWiki o s)
---           ,("docbook"      , \o s -> return $ readDocBook o s)
---           ,("opml"         , \o s -> return $ readOPML o s)
---           ,("textile"      , \o s -> return $ readTextile o s) -- TODO : textile+lhs
+           ,("rst"          , \o s -> return $ readRST o s)
+           ,("mediawiki"    , \o s -> return $ readMediaWiki o s)
+           ,("docbook"      , \o s -> return $ readDocBook o s)
+           ,("opml"         , \o s -> return $ readOPML o s)
+           ,("textile"      , \o s -> return $ readTextile o s) -- TODO : textile+lhs
            ,("html"         , \o s -> return $ readHtml o s)
            ,("latex"        , \o s -> return $ readLaTeX o s)
           ,("haddock"      , \o s -> return $ readHaddock o s)
@@ -242,7 +242,7 @@ writers = [
      writeHtmlString o{ writerSlideVariant = RevealJsSlides
                       , writerHtml5 = True })
   ,("docbook"      , PureStringWriter writeDocbook)
---  ,("opml"         , PureStringWriter writeOPML)
+  ,("opml"         , PureStringWriter writeOPML)
 --  ,("opendocument" , PureStringWriter writeOpenDocument)
   ,("latex"        , PureStringWriter writeLaTeX)
 --  ,("beamer"       , PureStringWriter $ \o ->
@@ -250,12 +250,12 @@ writers = [
   ,("context"      , PureStringWriter writeConTeXt)
 --  ,("texinfo"      , PureStringWriter writeTexinfo)
 --  ,("man"          , PureStringWriter writeMan)
---  ,("markdown"     , PureStringWriter writeMarkdown)
---  ,("markdown_strict" , PureStringWriter writeMarkdown)
---  ,("markdown_phpextra" , PureStringWriter writeMarkdown)
---  ,("markdown_github" , PureStringWriter writeMarkdown)
---  ,("markdown_mmd" , PureStringWriter writeMarkdown)
---  ,("plain"        , PureStringWriter writePlain)
+  ,("markdown"     , PureStringWriter writeMarkdown)
+  ,("markdown_strict" , PureStringWriter writeMarkdown)
+  ,("markdown_phpextra" , PureStringWriter writeMarkdown)
+  ,("markdown_github" , PureStringWriter writeMarkdown)
+  ,("markdown_mmd" , PureStringWriter writeMarkdown)
+  ,("plain"        , PureStringWriter writePlain)
 --  ,("rst"          , PureStringWriter writeRST)
 --  ,("mediawiki"    , PureStringWriter writeMediaWiki)
 --  ,("textile"      , PureStringWriter writeTextile)

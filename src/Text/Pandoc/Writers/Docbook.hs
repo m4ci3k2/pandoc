@@ -82,9 +82,8 @@ writeDocbook opts (Pandoc meta blocks) =
       startLvl = if writerChapters opts' then 0 else 1
       auths'   = map (authorToDocbook opts) $ docAuthors meta
       meta'    = B.setMeta "author" auths' meta
-      metadata = maybe (error "Could not convert metadata to context") id
-               $ metaToJSON
-                 (fmap (trimr . render colwidth) . Just . blocksToDocbook opts)
+      Just metadata = metaToJSON
+                 (Just . trimr . render colwidth . blocksToDocbook opts)
                  meta'
       main     = render' $ vcat (map (elementToDocbook opts' startLvl) elements)
       context = setField "body" main

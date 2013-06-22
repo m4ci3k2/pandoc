@@ -93,7 +93,7 @@ module Text.Pandoc
                -- , writeODT
                -- , writeDocx
                -- , writeEPUB
-               -- , writeFB2
+               , writeFB2
                -- , writeOrg
                -- , writeAsciiDoc
                , writeCustom
@@ -130,7 +130,7 @@ import Text.Pandoc.Writers.HTML
 -- import Text.Pandoc.Writers.ODT
 -- import Text.Pandoc.Writers.Docx
 -- import Text.Pandoc.Writers.EPUB
--- import Text.Pandoc.Writers.FB2
+import Text.Pandoc.Writers.FB2
 import Text.Pandoc.Writers.Docbook
 import Text.Pandoc.Writers.OPML
 -- import Text.Pandoc.Writers.OpenDocument
@@ -224,7 +224,7 @@ writers = [
 --                       writeEPUB o{ writerEpubVersion = Just EPUB2 })
 --  ,("epub3"        , IOByteStringWriter $ \o ->
 --                       writeEPUB o{ writerEpubVersion = Just EPUB3 })
---  ,("fb2"          , IOStringWriter writeFB2)
+  ,("fb2"          , IOStringWriter writeFB2)
   ,("html"         , PureStringWriter writeHtmlString)
   ,("html5"        , PureStringWriter $ \o ->
      writeHtmlString o{ writerHtml5 = True })

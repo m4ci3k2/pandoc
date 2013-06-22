@@ -39,7 +39,6 @@ import Network.URI ( isAbsoluteURI, unEscapeString )
 import Data.List ( (\\), isSuffixOf, isInfixOf,
                    isPrefixOf, intercalate, intersperse )
 import Data.Char ( toLower, isPunctuation )
-import qualified Data.Text as T
 import Control.Applicative ((<|>))
 import Control.Monad.State
 import Text.Pandoc.Pretty
@@ -158,11 +157,8 @@ pandocToLaTeX options (Pandoc meta blocks) = do
                          _        -> id) $
                   foldl (\acc (x,y) -> setField x y acc)
                      metadata (writerVariables options)
-  let template' = case compileTemplate (T.pack template) of
-                        Left  e -> error e
-                        Right t -> t
   return $ if writerStandalone options
-              then renderTemplate template' context
+              then renderTemplate' template context
               else main
 
 -- | Convert Elements to LaTeX

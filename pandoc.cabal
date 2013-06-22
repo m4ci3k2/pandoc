@@ -314,7 +314,7 @@ Library
                    -- Text.Pandoc.Writers.Org,
                    -- Text.Pandoc.Writers.AsciiDoc,
                    Text.Pandoc.Writers.Custom,
-                   -- Text.Pandoc.Writers.Textile,
+                   Text.Pandoc.Writers.Textile,
                    -- Text.Pandoc.Writers.MediaWiki,
                    -- Text.Pandoc.Writers.RTF,
                    -- Text.Pandoc.Writers.ODT,

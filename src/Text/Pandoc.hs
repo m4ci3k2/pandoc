@@ -80,7 +80,7 @@ module Text.Pandoc
                -- , writeRST
                , writeLaTeX
                , writeConTeXt
-               -- , writeTexinfo
+               , writeTexinfo
                , writeHtml
                , writeHtmlString
                , writeDocbook
@@ -125,7 +125,7 @@ import Text.Pandoc.Writers.Markdown
 -- import Text.Pandoc.Writers.RST
 import Text.Pandoc.Writers.LaTeX
 import Text.Pandoc.Writers.ConTeXt
--- import Text.Pandoc.Writers.Texinfo
+import Text.Pandoc.Writers.Texinfo
 import Text.Pandoc.Writers.HTML
 -- import Text.Pandoc.Writers.ODT
 -- import Text.Pandoc.Writers.Docx
@@ -248,7 +248,7 @@ writers = [
 --  ,("beamer"       , PureStringWriter $ \o ->
 --     writeLaTeX o{ writerBeamer = True })
   ,("context"      , PureStringWriter writeConTeXt)
---  ,("texinfo"      , PureStringWriter writeTexinfo)
+  ,("texinfo"      , PureStringWriter writeTexinfo)
 --  ,("man"          , PureStringWriter writeMan)
   ,("markdown"     , PureStringWriter writeMarkdown)
   ,("markdown_strict" , PureStringWriter writeMarkdown)

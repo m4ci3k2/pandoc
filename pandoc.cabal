@@ -307,7 +307,7 @@ Library
                    Text.Pandoc.Writers.LaTeX,
                    Text.Pandoc.Writers.ConTeXt,
                    -- Text.Pandoc.Writers.OpenDocument,
-                   -- Text.Pandoc.Writers.Texinfo,
+                   Text.Pandoc.Writers.Texinfo,
                    Text.Pandoc.Writers.Man,
                    Text.Pandoc.Writers.Markdown,
                    -- Text.Pandoc.Writers.RST,

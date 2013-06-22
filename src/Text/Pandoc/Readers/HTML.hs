@@ -40,7 +40,6 @@ import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Match
 import Text.Pandoc.Definition
 import qualified Text.Pandoc.Builder as B
-import qualified Data.Map as M
 import Text.Pandoc.Shared
 import Text.Pandoc.Options
 import Text.Pandoc.Parsing
@@ -68,8 +67,8 @@ readHtml opts inp =
                    parseTagsOptions parseOptions{ optTagPosition = True } inp
           parseDoc = do
              blocks <- (fixPlains False . concat) <$> manyTill block eof
-             tit <- (MetaBlocks . (:[]) . Plain . stateTitle) <$> getState
-             return $ Pandoc (Meta $ M.insert "title" tit M.empty) blocks
+             meta <- stateMeta <$> getState
+             return $ Pandoc meta blocks
 
 type TagParser = Parser [Tag String] ParserState
 
@@ -79,7 +78,9 @@ pBody = pInTags "body" block
 pHead :: TagParser [Block]
 pHead = pInTags "head" $ pTitle <|> ([] <$ pAnyTag)
   where pTitle = pInTags "title" inline >>= setTitle . normalizeSpaces
-        setTitle t = [] <$ (updateState $ \st -> st{ stateTitle = t })
+        setTitle t = [] <$ (updateState $ \st ->
+                            st{ stateMeta = B.setMeta "title" (B.fromList t)
+                                $ stateMeta st })
 
 block :: TagParser [Block]
 block = choice

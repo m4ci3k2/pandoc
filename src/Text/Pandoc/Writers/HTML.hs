@@ -44,7 +44,6 @@ import Numeric ( showHex )
 import Data.Char ( ord, toLower )
 import Data.List ( isPrefixOf, intersperse )
 import Data.String ( fromString )
-import qualified Data.Text as T
 import Data.Maybe ( catMaybes )
 import Control.Monad.State
 import Text.Blaze.Html hiding(contents)
@@ -182,11 +181,8 @@ inTemplate :: TemplateTarget a
            -> Value
            -> Html
            -> a
-inTemplate opts context body = renderTemplate template context'
-  where template = case compileTemplate (T.pack $ writerTemplate opts) of
-                        Left  e -> error e
-                        Right t -> t
-        context' = setField "body" (renderHtml body) context
+inTemplate opts context body = renderTemplate' (writerTemplate opts)
+                             $ setField "body" (renderHtml body) context
 
 -- | Like Text.XHtml's identifier, but adds the writerIdentifierPrefix
 prefixedId :: WriterOptions -> String -> Attribute

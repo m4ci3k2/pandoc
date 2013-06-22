@@ -37,9 +37,8 @@ import Text.Printf ( printf )
 import Data.List ( intercalate, isPrefixOf )
 import Control.Monad.State
 import Text.Pandoc.Pretty
-import Text.Pandoc.Templates ( renderTemplate, compileTemplate )
+import Text.Pandoc.Templates ( renderTemplate' )
 import Network.URI ( isURI, unEscapeString )
-import qualified Data.Text as T
 
 data WriterState =
   WriterState { stNextRef          :: Int  -- number of next URL reference
@@ -82,11 +81,8 @@ pandocToConTeXt options (Pandoc meta blocks) = do
                     (lookup "lang" $ writerVariables options))
                 $ foldl (\acc (x,y) -> setField x y acc)
                      metadata (writerVariables options)
-  let template' = case compileTemplate (T.pack $ writerTemplate options) of
-                        Left  e -> error e
-                        Right t -> t
   return $ if writerStandalone options
-              then renderTemplate template' context
+              then renderTemplate' (writerTemplate options) context
               else main
 
 -- escape things as needed for ConTeXt

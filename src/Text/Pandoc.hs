@@ -94,7 +94,7 @@ module Text.Pandoc
                -- , writeDocx
                -- , writeEPUB
                , writeFB2
-               -- , writeOrg
+               , writeOrg
                -- , writeAsciiDoc
                , writeCustom
                -- * Rendering templates and default templates
@@ -138,7 +138,7 @@ import Text.Pandoc.Writers.Man
 -- import Text.Pandoc.Writers.RTF
 import Text.Pandoc.Writers.MediaWiki
 import Text.Pandoc.Writers.Textile
--- import Text.Pandoc.Writers.Org
+import Text.Pandoc.Writers.Org
 -- import Text.Pandoc.Writers.AsciiDoc
 import Text.Pandoc.Writers.Custom
 import Text.Pandoc.Templates
@@ -260,7 +260,7 @@ writers = [
   ,("mediawiki"    , PureStringWriter writeMediaWiki)
   ,("textile"      , PureStringWriter writeTextile)
 --  ,("rtf"          , IOStringWriter writeRTFWithEmbeddedImages)
---  ,("org"          , PureStringWriter writeOrg)
+  ,("org"          , PureStringWriter writeOrg)
 --  ,("asciidoc"     , PureStringWriter writeAsciiDoc)
   ]
 

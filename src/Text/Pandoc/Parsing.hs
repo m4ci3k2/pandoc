@@ -148,7 +148,7 @@ where
 
 import Text.Pandoc.Definition
 import Text.Pandoc.Options
-import Text.Pandoc.Builder (Blocks, Inlines, rawBlock)
+import Text.Pandoc.Builder (Blocks, Inlines, rawBlock, HasMeta(..))
 import Text.Pandoc.XML (fromEntities)
 import qualified Text.Pandoc.UTF8 as UTF8 (putStrLn)
 import Text.Parsec
@@ -813,6 +813,10 @@ data ParserState = ParserState
 
 instance Default ParserState where
   def = defaultParserState
+
+instance HasMeta ParserState where
+  setMeta field val st =
+    st{ stateMeta = setMeta field val $ stateMeta st }
 
 defaultParserState :: ParserState
 defaultParserState =

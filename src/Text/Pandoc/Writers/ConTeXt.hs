@@ -37,8 +37,9 @@ import Text.Printf ( printf )
 import Data.List ( intercalate, isPrefixOf )
 import Control.Monad.State
 import Text.Pandoc.Pretty
-import Text.Pandoc.Templates ( renderTemplate )
+import Text.Pandoc.Templates ( renderTemplate, compileTemplate )
 import Network.URI ( isURI, unEscapeString )
+import qualified Data.Text as T
 
 data WriterState =
   WriterState { stNextRef          :: Int  -- number of next URL reference
@@ -59,36 +60,33 @@ writeConTeXt options document =
   in evalState (pandocToConTeXt options document) defaultWriterState
 
 pandocToConTeXt :: WriterOptions -> Pandoc -> State WriterState String
-pandocToConTeXt options (Pandoc (Meta title authors date) blocks) = do
+pandocToConTeXt options (Pandoc meta blocks) = do
   let colwidth = if writerWrapText options
                     then Just $ writerColumns options
                     else Nothing
-  titletext <- if null title
-                  then return ""
-                  else liftM (render colwidth) $ inlineListToConTeXt title
-  authorstext <- mapM (liftM (render colwidth) . inlineListToConTeXt) authors
-  datetext <-  if null date
-                  then return ""
-                  else liftM (render colwidth) $ inlineListToConTeXt date
+  metadata <- metaToJSON (fmap (trimr . render colwidth) . blockListToConTeXt)
+                 meta
   body <- mapM (elementToConTeXt options) $ hierarchicalize blocks
   let main = (render colwidth . vcat) body
-  let context  = writerVariables options ++
-                 [ ("toc", if writerTableOfContents options then "yes" else "")
-                 , ("placelist", intercalate "," $
+  let context =   setField "toc" (writerTableOfContents options)
+                $ setField "placelist" (intercalate ("," :: String) $
                      take (writerTOCDepth options + if writerChapters options
                                                        then 0
                                                        else 1)
                        ["chapter","section","subsection","subsubsection",
                         "subsubsubsection","subsubsubsubsection"])
-                 , ("body", main)
-                 , ("title", titletext)
-                 , ("date", datetext) ] ++
-                 [ ("number-sections", "yes") | writerNumberSections options ] ++
-                 [ ("mainlang", maybe "" (reverse . takeWhile (/=',') . reverse)
-                                (lookup "lang" $ writerVariables options)) ] ++
-                 [ ("author", a) | a <- authorstext ]
+                $ setField "body" main
+                $ setField "number-sections" (writerNumberSections options)
+                $ setField "mainlang" (maybe ""
+                    (reverse . takeWhile (/=',') . reverse)
+                    (lookup "lang" $ writerVariables options))
+                $ foldl (\acc (x,y) -> setField x y acc)
+                     metadata (writerVariables options)
+  let template' = case compileTemplate (T.pack $ writerTemplate options) of
+                        Left  e -> error e
+                        Right t -> t
   return $ if writerStandalone options
-              then renderTemplate context $ writerTemplate options
+              then renderTemplate template' context
               else main
 
 -- escape things as needed for ConTeXt

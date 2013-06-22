@@ -118,10 +118,8 @@ pandocToLaTeX options (Pandoc meta blocks) = do
   let main = render colwidth $ vsep body
   st <- get
   let biblioFiles = intercalate "," $ map dropExtension $  writerBiblioFiles options
-  let context  = (if writerTableOfContents options
-                      then setField "toc" True
-                      else id) $
-                  setField "toc-depth" (show (writerTOCDepth options - 
+  let context  =  setField "toc" (writerTableOfContents options) $
+                  setField "toc-depth" (show (writerTOCDepth options -
                                               if writerChapters options
                                                  then 1
                                                  else 0)) $

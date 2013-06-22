@@ -87,7 +87,7 @@ module Text.Pandoc
                , writeOPML
                -- , writeOpenDocument
                , writeMan
-               -- , writeMediaWiki
+               , writeMediaWiki
                , writeTextile
                -- , writeRTF
                -- , writeODT
@@ -136,7 +136,7 @@ import Text.Pandoc.Writers.OPML
 -- import Text.Pandoc.Writers.OpenDocument
 import Text.Pandoc.Writers.Man
 -- import Text.Pandoc.Writers.RTF
--- import Text.Pandoc.Writers.MediaWiki
+import Text.Pandoc.Writers.MediaWiki
 import Text.Pandoc.Writers.Textile
 -- import Text.Pandoc.Writers.Org
 -- import Text.Pandoc.Writers.AsciiDoc
@@ -257,7 +257,7 @@ writers = [
   ,("markdown_mmd" , PureStringWriter writeMarkdown)
   ,("plain"        , PureStringWriter writePlain)
 --  ,("rst"          , PureStringWriter writeRST)
---  ,("mediawiki"    , PureStringWriter writeMediaWiki)
+  ,("mediawiki"    , PureStringWriter writeMediaWiki)
   ,("textile"      , PureStringWriter writeTextile)
 --  ,("rtf"          , IOStringWriter writeRTFWithEmbeddedImages)
 --  ,("org"          , PureStringWriter writeOrg)

@@ -78,9 +78,7 @@ pBody = pInTags "body" block
 pHead :: TagParser [Block]
 pHead = pInTags "head" $ pTitle <|> ([] <$ pAnyTag)
   where pTitle = pInTags "title" inline >>= setTitle . normalizeSpaces
-        setTitle t = [] <$ (updateState $ \st ->
-                            st{ stateMeta = B.setMeta "title" (B.fromList t)
-                                $ stateMeta st })
+        setTitle t = [] <$ (updateState $ B.setMeta "title" (B.fromList t))
 
 block :: TagParser [Block]
 block = choice

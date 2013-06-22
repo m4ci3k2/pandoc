@@ -300,8 +300,7 @@ blockCommands = M.fromList $
   ]
 
 addMeta :: ToMetaValue a => String -> a -> LP ()
-addMeta field val = updateState $ \s ->
-  s{ stateMeta = setMeta field val $ stateMeta s }
+addMeta field val = updateState $ setMeta field val
 
 authors :: LP ()
 authors = try $ do

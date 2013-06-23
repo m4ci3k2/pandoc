@@ -95,7 +95,7 @@ module Text.Pandoc
                -- , writeEPUB
                , writeFB2
                , writeOrg
-               -- , writeAsciiDoc
+               , writeAsciiDoc
                , writeCustom
                -- * Rendering templates and default templates
                , module Text.Pandoc.Templates
@@ -139,7 +139,7 @@ import Text.Pandoc.Writers.RTF
 import Text.Pandoc.Writers.MediaWiki
 import Text.Pandoc.Writers.Textile
 import Text.Pandoc.Writers.Org
--- import Text.Pandoc.Writers.AsciiDoc
+import Text.Pandoc.Writers.AsciiDoc
 import Text.Pandoc.Writers.Custom
 import Text.Pandoc.Templates
 import Text.Pandoc.Options
@@ -261,7 +261,7 @@ writers = [
   ,("textile"      , PureStringWriter writeTextile)
   ,("rtf"          , IOStringWriter writeRTFWithEmbeddedImages)
   ,("org"          , PureStringWriter writeOrg)
---  ,("asciidoc"     , PureStringWriter writeAsciiDoc)
+  ,("asciidoc"     , PureStringWriter writeAsciiDoc)
   ]
 
 getDefaultExtensions :: String -> Set Extension

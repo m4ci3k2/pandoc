@@ -85,7 +85,7 @@ module Text.Pandoc
                , writeHtmlString
                , writeDocbook
                , writeOPML
-               -- , writeOpenDocument
+               , writeOpenDocument
                , writeMan
                , writeMediaWiki
                , writeTextile
@@ -133,7 +133,7 @@ import Text.Pandoc.Writers.HTML
 import Text.Pandoc.Writers.FB2
 import Text.Pandoc.Writers.Docbook
 import Text.Pandoc.Writers.OPML
--- import Text.Pandoc.Writers.OpenDocument
+import Text.Pandoc.Writers.OpenDocument
 import Text.Pandoc.Writers.Man
 import Text.Pandoc.Writers.RTF
 import Text.Pandoc.Writers.MediaWiki
@@ -243,7 +243,7 @@ writers = [
                       , writerHtml5 = True })
   ,("docbook"      , PureStringWriter writeDocbook)
   ,("opml"         , PureStringWriter writeOPML)
---  ,("opendocument" , PureStringWriter writeOpenDocument)
+  ,("opendocument" , PureStringWriter writeOpenDocument)
   ,("latex"        , PureStringWriter writeLaTeX)
 --  ,("beamer"       , PureStringWriter $ \o ->
 --     writeLaTeX o{ writerBeamer = True })

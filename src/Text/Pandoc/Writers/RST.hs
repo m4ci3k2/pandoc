@@ -30,11 +30,12 @@ Conversion of 'Pandoc' documents to reStructuredText.
 
 reStructuredText:  <http://docutils.sourceforge.net/rst.html>
 -}
-module Text.Pandoc.Writers.RST ( writeRST) where
+module Text.Pandoc.Writers.RST ( writeRST ) where
 import Text.Pandoc.Definition
 import Text.Pandoc.Options
 import Text.Pandoc.Shared
-import Text.Pandoc.Templates (renderTemplate)
+import Text.Pandoc.Templates (renderTemplate')
+import qualified Data.Map as M
 import Data.List ( isPrefixOf, intersperse, transpose )
 import Network.URI (isAbsoluteURI)
 import Text.Pandoc.Pretty
@@ -62,31 +63,31 @@ writeRST opts document =
 
 -- | Return RST representation of document.
 pandocToRST :: Pandoc -> State WriterState String
-pandocToRST (Pandoc (Meta tit auth dat) blocks) = do
+pandocToRST (Pandoc meta blocks) = do
   opts <- liftM stOptions get
-  title <- titleToRST tit
-  authors <- mapM inlineListToRST auth
-  date <- inlineListToRST dat
+  let colwidth = if writerWrapText opts
+                    then Just $ writerColumns opts
+                    else Nothing
+  title <- titleToRST $ docTitle meta
+  let meta' = Meta $ M.delete "title" $ unMeta meta
+  metadata <- metaToJSON (fmap (trimr . render colwidth) . blockListToRST) meta'
   body <- blockListToRST blocks
   notes <- liftM (reverse . stNotes) get >>= notesToRST
   -- note that the notes may contain refs, so we do them first
   refs <- liftM (reverse . stLinks) get >>= refsToRST
   pics <- liftM (reverse . stImages) get >>= pictRefsToRST
   hasMath <- liftM stHasMath get
-  let colwidth = if writerWrapText opts
-                    then Just $ writerColumns opts
-                    else Nothing
   let main = render colwidth $ foldl ($+$) empty $ [body, notes, refs, pics]
-  let context = writerVariables opts ++
-                [ ("body", main)
-                , ("title", render Nothing title)
-                , ("date", render colwidth date)
-                , ("toc", if writerTableOfContents opts then "yes" else "")
-                , ("toc-depth", show (writerTOCDepth opts)) ] ++
-                [ ("math", "yes") | hasMath ] ++
-                [ ("author", render colwidth a) | a <- authors ]
+  let context = setField "body" main
+              $ setField "toc" (writerTableOfContents opts)
+              $ setField "toc-depth" (writerTOCDepth opts)
+              $ setField "math" hasMath
+              $ setField "title" (render Nothing title :: String)
+              $ setField "math" hasMath
+              $ foldl (\acc (x,y) -> setField x y acc)
+                     metadata (writerVariables opts)
   if writerStandalone opts
-     then return $ renderTemplate context $ writerTemplate opts
+     then return $ renderTemplate' (writerTemplate opts) context
      else return main
 
 -- | Return RST representation of reference key table.

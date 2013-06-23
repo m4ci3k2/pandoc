@@ -77,7 +77,7 @@ module Text.Pandoc
                , writeNative
                -- , writeMarkdown
                -- , writePlain
-               -- , writeRST
+               , writeRST
                , writeLaTeX
                , writeConTeXt
                , writeTexinfo
@@ -122,7 +122,7 @@ import Text.Pandoc.Readers.Native
 import Text.Pandoc.Readers.Haddock
 import Text.Pandoc.Writers.Native
 import Text.Pandoc.Writers.Markdown
--- import Text.Pandoc.Writers.RST
+import Text.Pandoc.Writers.RST
 import Text.Pandoc.Writers.LaTeX
 import Text.Pandoc.Writers.ConTeXt
 import Text.Pandoc.Writers.Texinfo
@@ -256,7 +256,7 @@ writers = [
   ,("markdown_github" , PureStringWriter writeMarkdown)
   ,("markdown_mmd" , PureStringWriter writeMarkdown)
   ,("plain"        , PureStringWriter writePlain)
---  ,("rst"          , PureStringWriter writeRST)
+  ,("rst"          , PureStringWriter writeRST)
   ,("mediawiki"    , PureStringWriter writeMediaWiki)
   ,("textile"      , PureStringWriter writeTextile)
   ,("rtf"          , IOStringWriter writeRTFWithEmbeddedImages)

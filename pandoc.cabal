@@ -310,7 +310,7 @@ Library
                    Text.Pandoc.Writers.Texinfo,
                    Text.Pandoc.Writers.Man,
                    Text.Pandoc.Writers.Markdown,
-                   -- Text.Pandoc.Writers.RST,
+                   Text.Pandoc.Writers.RST,
                    Text.Pandoc.Writers.Org,
                    Text.Pandoc.Writers.AsciiDoc,
                    Text.Pandoc.Writers.Custom,

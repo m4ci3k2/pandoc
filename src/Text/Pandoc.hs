@@ -75,8 +75,8 @@ module Text.Pandoc
                -- * Writers: converting /from/ Pandoc format
                , Writer (..)
                , writeNative
-               -- , writeMarkdown
-               -- , writePlain
+               , writeMarkdown
+               , writePlain
                , writeRST
                , writeLaTeX
                , writeConTeXt
@@ -91,7 +91,7 @@ module Text.Pandoc
                , writeTextile
                , writeRTF
                , writeODT
-               -- , writeDocx
+               , writeDocx
                -- , writeEPUB
                , writeFB2
                , writeOrg
@@ -128,7 +128,7 @@ import Text.Pandoc.Writers.ConTeXt
 import Text.Pandoc.Writers.Texinfo
 import Text.Pandoc.Writers.HTML
 import Text.Pandoc.Writers.ODT
--- import Text.Pandoc.Writers.Docx
+import Text.Pandoc.Writers.Docx
 -- import Text.Pandoc.Writers.EPUB
 import Text.Pandoc.Writers.FB2
 import Text.Pandoc.Writers.Docbook
@@ -218,7 +218,7 @@ writers = [
    ("native"       , PureStringWriter writeNative)
   ,("json"         , PureStringWriter $ \_ -> UTF8.toStringLazy . encode)
 --  ,("json"         , PureStringWriter $ \_ -> encodeJSON)
---  ,("docx"         , IOByteStringWriter writeDocx)
+  ,("docx"         , IOByteStringWriter writeDocx)
  ,("odt"          , IOByteStringWriter writeODT)
 --  ,("epub"         , IOByteStringWriter $ \o ->
 --                       writeEPUB o{ writerEpubVersion = Just EPUB2 })

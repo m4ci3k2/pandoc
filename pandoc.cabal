@@ -318,7 +318,7 @@ Library
                    Text.Pandoc.Writers.MediaWiki,
                    Text.Pandoc.Writers.RTF,
                    Text.Pandoc.Writers.ODT,
-                   -- Text.Pandoc.Writers.Docx,
+                   Text.Pandoc.Writers.Docx,
                    -- Text.Pandoc.Writers.EPUB,
                    Text.Pandoc.Writers.FB2,
                    Text.Pandoc.PDF,

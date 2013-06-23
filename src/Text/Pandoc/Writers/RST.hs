@@ -68,8 +68,13 @@ pandocToRST (Pandoc meta blocks) = do
   let colwidth = if writerWrapText opts
                     then Just $ writerColumns opts
                     else Nothing
-  title <- titleToRST $ docTitle meta
-  let meta' = Meta $ M.delete "title" $ unMeta meta
+  let subtit = case lookupMeta "subtitle" meta of
+                    Just (MetaBlocks [Plain xs]) -> xs
+                    _ -> []
+  title <- titleToRST (docTitle meta) subtit
+  let meta' = Meta $ M.delete "title"
+                   $ M.delete "subtitle"
+                   $ unMeta meta
   metadata <- metaToJSON (fmap (trimr . render colwidth) . blockListToRST) meta'
   body <- blockListToRST blocks
   notes <- liftM (reverse . stNotes) get >>= notesToRST
@@ -137,13 +142,20 @@ pictToRST (label, (src, _, mbtarget)) = do
 escapeString :: String -> String
 escapeString = escapeStringUsing (backslashEscapes "`\\|*_")
 
-titleToRST :: [Inline] -> State WriterState Doc
-titleToRST [] = return empty
-titleToRST lst = do
-  contents <- inlineListToRST lst
-  let titleLength = length $ (render Nothing contents :: String)
-  let border = text (replicate titleLength '=')
-  return $ border $$ contents $$ border
+titleToRST :: [Inline] -> [Inline] -> State WriterState Doc
+titleToRST [] _ = return empty
+titleToRST tit subtit = do
+  title <- inlineListToRST tit
+  subtitle <- inlineListToRST subtit
+  return $ bordered title '=' $$ bordered subtitle '-'
+
+bordered :: Doc -> Char -> Doc
+bordered contents c =
+  if len > 0
+     then border $$ contents $$ border
+     else empty
+   where len = offset contents
+         border = text (replicate len c)
 
 -- | Convert Pandoc block element to RST.
 blockToRST :: Block         -- ^ Block element

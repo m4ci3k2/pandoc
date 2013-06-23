@@ -90,7 +90,7 @@ module Text.Pandoc
                , writeMediaWiki
                , writeTextile
                , writeRTF
-               -- , writeODT
+               , writeODT
                -- , writeDocx
                -- , writeEPUB
                , writeFB2
@@ -127,7 +127,7 @@ import Text.Pandoc.Writers.LaTeX
 import Text.Pandoc.Writers.ConTeXt
 import Text.Pandoc.Writers.Texinfo
 import Text.Pandoc.Writers.HTML
--- import Text.Pandoc.Writers.ODT
+import Text.Pandoc.Writers.ODT
 -- import Text.Pandoc.Writers.Docx
 -- import Text.Pandoc.Writers.EPUB
 import Text.Pandoc.Writers.FB2
@@ -219,7 +219,7 @@ writers = [
   ,("json"         , PureStringWriter $ \_ -> UTF8.toStringLazy . encode)
 --  ,("json"         , PureStringWriter $ \_ -> encodeJSON)
 --  ,("docx"         , IOByteStringWriter writeDocx)
---  ,("odt"          , IOByteStringWriter writeODT)
+ ,("odt"          , IOByteStringWriter writeODT)
 --  ,("epub"         , IOByteStringWriter $ \o ->
 --                       writeEPUB o{ writerEpubVersion = Just EPUB2 })
 --  ,("epub3"        , IOByteStringWriter $ \o ->

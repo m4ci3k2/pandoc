@@ -35,7 +35,7 @@ import Text.Pandoc.Definition
 import Text.Pandoc.Options
 import Text.Pandoc.Shared
 import Text.Pandoc.Templates (renderTemplate')
-import qualified Data.Map as M
+import Text.Pandoc.Builder (deleteMeta)
 import Data.List ( isPrefixOf, intersperse, transpose )
 import Network.URI (isAbsoluteURI)
 import Text.Pandoc.Pretty
@@ -72,10 +72,8 @@ pandocToRST (Pandoc meta blocks) = do
                     Just (MetaBlocks [Plain xs]) -> xs
                     _ -> []
   title <- titleToRST (docTitle meta) subtit
-  let meta' = Meta $ M.delete "title"
-                   $ M.delete "subtitle"
-                   $ unMeta meta
-  metadata <- metaToJSON (fmap (trimr . render colwidth) . blockListToRST) meta'
+  metadata <- metaToJSON (fmap (trimr . render colwidth) . blockListToRST)
+              $ deleteMeta "title" $ deleteMeta "subtitle" meta
   body <- blockListToRST blocks
   notes <- liftM (reverse . stNotes) get >>= notesToRST
   -- note that the notes may contain refs, so we do them first

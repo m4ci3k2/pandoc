@@ -257,7 +257,8 @@ Library
                  blaze-html >= 0.5 && < 0.7,
                  blaze-markup >= 0.5.1 && < 0.6,
                  hslua >= 0.3 && < 0.4,
-                 hashable >= 1.0 && < 2.0
+                 hashable >= 1.0 && < 2.0,
+                 data-ordlist > 0.4 && < 0.5
   if flag(embed_data_files)
      cpp-options:   -DEMBED_DATA_FILES
      -- build-tools:   hsb2hs

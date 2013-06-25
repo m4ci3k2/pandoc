@@ -44,6 +44,7 @@ import Network.HTTP ( urlEncode )
 import Numeric ( showHex )
 import Data.Char ( ord, toLower )
 import Data.List ( isPrefixOf, intersperse )
+import Data.List.Ordered ( nubSort )
 import Data.String ( fromString )
 import Data.Maybe ( catMaybes )
 import Data.Hashable
@@ -103,16 +104,18 @@ nl opts = if writerWrapText opts
 -- | Convert Pandoc document to Html string.
 writeHtmlStringIO :: WriterOptions -> Pandoc -> IO String
 writeHtmlStringIO opts d =
-  let (tit, auths, authsMeta, date, toc, body', newvars) = evalState (pandocToHtml opts d)
+  let (tit, auths, authsMeta, date, toc, body', newvars, addsources) = evalState (pandocToHtml opts d)
                                                              defaultWriterStateWithIO
-  in return $ if writerStandalone opts
+  in 
+-- FIXME czytanie plikow
+  return $ if writerStandalone opts
          then inTemplate opts tit auths authsMeta date toc body' newvars
          else renderHtml body'
 
 -- | Convert Pandoc document to Html string.
 writeHtmlString :: WriterOptions -> Pandoc -> String
 writeHtmlString opts d =
-  let (tit, auths, authsMeta, date, toc, body', newvars) = evalState (pandocToHtml opts d)
+  let (tit, auths, authsMeta, date, toc, body', newvars, _) = evalState (pandocToHtml opts d)
                                                              defaultWriterState
   in  if writerStandalone opts
          then inTemplate opts tit auths authsMeta date toc body' newvars
@@ -121,7 +124,7 @@ writeHtmlString opts d =
 -- | Convert Pandoc document to Html structure.
 writeHtml :: WriterOptions -> Pandoc -> Html
 writeHtml opts d =
-  let (tit, auths, authsMeta, date, toc, body', newvars) = evalState (pandocToHtml opts d)
+  let (tit, auths, authsMeta, date, toc, body', newvars, _) = evalState (pandocToHtml opts d)
                                                             defaultWriterState
   in  if writerStandalone opts
          then inTemplate opts tit auths authsMeta date toc body' newvars
@@ -130,7 +133,7 @@ writeHtml opts d =
 -- result is (title, authors, date, toc, body, new variables)
 pandocToHtml :: WriterOptions
              -> Pandoc
-             -> State WriterState (Html, [Html], [Html], Html, Maybe Html, Html, [(String,String)])
+             -> State WriterState (Html, [Html], [Html], Html, Maybe Html, Html, [(String,String)], [String])
 pandocToHtml opts (Pandoc (Meta title' authors' date') blocks) = do
   let standalone = writerStandalone opts
   tit <- if standalone
@@ -189,7 +192,8 @@ pandocToHtml opts (Pandoc (Meta title' authors' date') blocks) = do
                    stHighlighting st] ++
                 [("math", renderHtml math) | stMath st] ++
                 [("quotes", "yes") | stQuotes st]
-  return (tit, auths, authsMeta, date, toc, thebody, newvars)
+  let addsources = nubSort $ stAddSources st
+  return (tit, auths, authsMeta, date, toc, thebody, newvars, addsources)
 
 -- | Prepare author for meta tag, converting notes into
 -- bracketed text and removing links.
@@ -488,7 +492,7 @@ blockToHtml opts (CodeBlock (id',classes,keyvals) rawCode) = do
     if hasHaskell
        then
            return $ addAttrs opts (id',classes,keyvalsNew)
-                  $ H.form $ (H.textarea ! A.name (toValue hashCode) ! A.id (toValue hashCode)) $ toHtml adjCode -- FIXME escape less?
+                  $ H.form $ (H.textarea ! A.name (toValue hashCode) ! A.id (toValue hashCode)) ! A.class_ "runCodeEditor" $ toHtml adjCode -- FIXME escape less?
                   >> (runEditor hashCode)
        else
            case highlight formatHtmlBlock (id',classes',keyvalsNew) adjCode of

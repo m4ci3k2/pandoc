@@ -29,7 +29,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 Conversion of 'Pandoc' documents to HTML.
 -}
-module Text.Pandoc.Writers.HTML ( writeHtml , writeHtmlString ) where
+module Text.Pandoc.Writers.HTML ( writeHtml , writeHtmlString, writeHtmlStringIO ) where
 import Text.Pandoc.Definition
 import Text.Pandoc.Shared
 import Text.Pandoc.Options
@@ -68,11 +68,15 @@ data WriterState = WriterState
     , stQuotes           :: Bool    -- ^ <q> tag is used
     , stHighlighting     :: Bool    -- ^ Syntax highlighting is used
     , stSecNum           :: [Int]   -- ^ Number of current section
+    , stAddSources	 :: [String] -- ^ List of files needed for code fragments
+    , stWebCompiler	 :: Bool    -- ^ Enables interpretation of code framents with JS calls
     }
 
 defaultWriterState :: WriterState
 defaultWriterState = WriterState {stNotes= [], stMath = False, stQuotes = False,
-                                  stHighlighting = False, stSecNum = []}
+                                  stHighlighting = False, stSecNum = [], stAddSources = [], stWebCompiler = False}
+defaultWriterStateWithIO = WriterState {stNotes= [], stMath = False, stQuotes = False,
+                                  stHighlighting = False, stSecNum = [], stAddSources = [], stWebCompiler = True}
 
 -- Helpers to render HTML with the appropriate function.
 
@@ -88,6 +92,15 @@ nl :: WriterOptions -> Html
 nl opts = if writerWrapText opts
              then preEscapedString "\n"
              else mempty
+
+-- | Convert Pandoc document to Html string.
+writeHtmlStringIO :: WriterOptions -> Pandoc -> IO String
+writeHtmlStringIO opts d =
+  let (tit, auths, authsMeta, date, toc, body', newvars) = evalState (pandocToHtml opts d)
+                                                             defaultWriterStateWithIO
+  in return $ if writerStandalone opts
+         then inTemplate opts tit auths authsMeta date toc body' newvars
+         else renderHtml body'
 
 -- | Convert Pandoc document to Html string.
 writeHtmlString :: WriterOptions -> Pandoc -> String

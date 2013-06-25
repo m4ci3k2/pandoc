@@ -220,7 +220,7 @@ writers = [
   ,("epub3"        , IOByteStringWriter $ \o ->
                        writeEPUB o{ writerEpubVersion = Just EPUB3 })
   ,("fb2"          , IOStringWriter writeFB2)
-  ,("html"         , PureStringWriter writeHtmlString)
+  ,("html"         , IOStringWriter writeHtmlStringIO)
   ,("html5"        , PureStringWriter $ \o ->
      writeHtmlString o{ writerHtml5 = True })
   ,("s5"           , PureStringWriter $ \o ->

@@ -46,6 +46,7 @@ import Data.Char ( ord, toLower )
 import Data.List ( isPrefixOf, intersperse )
 import Data.String ( fromString )
 import Data.Maybe ( catMaybes )
+import Data.Hashable
 import Control.Monad.State
 import Text.Blaze.Html hiding(contents)
 import Text.Blaze.Internal(preEscapedString)
@@ -70,13 +71,19 @@ data WriterState = WriterState
     , stSecNum           :: [Int]   -- ^ Number of current section
     , stAddSources	 :: [String] -- ^ List of files needed for code fragments
     , stWebCompiler	 :: Bool    -- ^ Enables interpretation of code framents with JS calls
+--    , stRunEditors       :: [String] -- ^ List of editor identifiers to run
     }
 
 defaultWriterState :: WriterState
 defaultWriterState = WriterState {stNotes= [], stMath = False, stQuotes = False,
-                                  stHighlighting = False, stSecNum = [], stAddSources = [], stWebCompiler = False}
+                                  stHighlighting = False, stSecNum = [], stAddSources = [],
+--                                  stRunEditors = [], 
+                                  stWebCompiler = False}
+defaultWriterStateWithIO :: WriterState
 defaultWriterStateWithIO = WriterState {stNotes= [], stMath = False, stQuotes = False,
-                                  stHighlighting = False, stSecNum = [], stAddSources = [], stWebCompiler = True}
+                                  stHighlighting = False, stSecNum = [], stAddSources = [],
+--                                  stRunEditors = [], 
+                                  stWebCompiler = True}
 
 -- Helpers to render HTML with the appropriate function.
 
@@ -462,11 +469,33 @@ blockToHtml opts (CodeBlock (id',classes,keyvals) rawCode) = do
       adjCode  = if tolhs
                     then unlines . map ("> " ++) . lines $ rawCode
                     else rawCode
-  case highlight formatHtmlBlock (id',classes',keyvals) adjCode of
-         Nothing -> return $ addAttrs opts (id',classes,keyvals)
-                           $ H.pre $ H.code $ toHtml adjCode
-         Just  h -> modify (\st -> st{ stHighlighting = True }) >>
-                    return (addAttrs opts (id',[],keyvals) h)
+  do 
+    stG <- get
+    let 
+        (keyvalsNew, newState) = 
+            case lookup "attach-file" keyvals of
+                    Just fileName -> (
+                                       ( (filter (\x -> (fst x) /= "attach-file") keyvals) ++ [("attach-file", show (hash fileName))]),
+                                       stG{ stAddSources =  ( stAddSources stG ++ [fileName] )}
+                                      )
+                    Nothing -> (keyvals, stG)
+        hasHaskell = elem "haskell" classes
+        hashCode = "edit" ++ (show $ hash adjCode)
+--    let 
+--        newState2 = if hasHaskell then newState{ stRunEditors = (stRunEditors newState ++ [hashCode]) } else newState 
+--    put newState2
+    put newState
+    if hasHaskell
+       then
+           return $ addAttrs opts (id',classes,keyvalsNew)
+                  $ H.form $ (H.textarea ! A.name (toValue hashCode) ! A.id (toValue hashCode)) $ toHtml adjCode -- FIXME escape less?
+                  >> (runEditor hashCode)
+       else
+           case highlight formatHtmlBlock (id',classes',keyvalsNew) adjCode of
+                  Nothing -> return $ addAttrs opts (id',classes,keyvalsNew)
+                                    $ H.pre $ H.code $ toHtml adjCode
+                  Just  h -> modify (\st -> st{ stHighlighting = True }) >>
+                             return (addAttrs opts (id',[],keyvals) h)
 blockToHtml opts (BlockQuote blocks) =
   -- in S5, treat list in blockquote specially
   -- if default is incremental, make it nonincremental;
@@ -567,6 +596,12 @@ blockToHtml opts (Table capt aligns widths headers rows') = do
   return $ H.table $ nl opts >> captionDoc >> coltags >> head' >>
                    body' >> nl opts
 
+runEditor :: String -> Html
+runEditor editorName =
+  H.script $ preEscapedToHtml $
+    "CodeMirror.fromTextArea(document.getElementById(\""
+    ++ editorName ++ "\");\n"
+    	
 tableRowToHtml :: WriterOptions
                -> [Alignment]
                -> Int

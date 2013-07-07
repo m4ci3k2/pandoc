@@ -62,7 +62,12 @@ import Text.Blaze.Renderer.String (renderHtml)
 import Text.TeXMath
 import Text.XML.Light.Output
 import System.FilePath (takeExtension)
+import System.IO.Temp (withSystemTempFile)
+import System.Cmd (system)
 import Data.Monoid
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
+import Data.ByteString.Base64 as BSC64
 
 data WriterState = WriterState
     { stNotes            :: [Html]  -- ^ List of notes
@@ -107,7 +112,6 @@ writeHtmlStringIO opts d =
   let (tit, auths, authsMeta, date, toc, body', newvars, addsources) = evalState (pandocToHtml opts d)
                                                              defaultWriterStateWithIO
   in 
--- FIXME czytanie plikow
   let newvars' = [("addScripts", ("<script src=\"http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js\"></script>\n"
                ++ "<script src=\"codemirror/lib/codemirror.js\"></script>\n"
                ++ "<link rel=\"stylesheet\" href=\"codemirror/lib/codemirror.css\">"
@@ -117,9 +121,22 @@ writeHtmlStringIO opts d =
                   ))]
                ++ newvars
   in
-  return $ if writerStandalone opts
-         then inTemplate opts tit auths authsMeta date toc body' newvars'
-         else renderHtml body'
+  do
+    srcCont <- mapM (\fn -> 
+                     (sequence 
+                       [return $ show $ hash fn,
+                        withSystemTempFile "panmktar." $ \tf _ -> do
+                          _ <- system $ "tar czf "++ tf ++ "x " ++ fn
+                          cont <- BS.readFile $ tf ++ "x" -- sorry for the x, but haskell disallows reads to write-open handles :-(
+                          return $ BSC.unpack $ BSC64.encode $ cont
+                       ]) 
+                     >>=  
+                      \[x,y] -> return $ "window['hs" ++  x ++ "'] = \"" ++ y ++ "\";\n") 
+               addsources
+    newvars'' <- return $ [("hsAddFiles", concat srcCont)] ++ newvars' 
+    return $ if writerStandalone opts
+           then inTemplate opts tit auths authsMeta date toc body' newvars''
+           else renderHtml body'
 
 -- | Convert Pandoc document to Html string.
 writeHtmlString :: WriterOptions -> Pandoc -> String
@@ -488,7 +505,7 @@ blockToHtml opts (CodeBlock (id',classes,keyvals) rawCode) = do
         (keyvalsNew, newState) = 
             case lookup "attach-file" keyvals of
                     Just fileName -> (
-                                       ( (filter (\x -> (fst x) /= "attach-file") keyvals) ++ [("attach-file", show (hash fileName))]),
+                                       ( (filter (\x -> (fst x) /= "attach-file") keyvals) ++ [("attach-file", "hs" ++ show (hash fileName))]),
                                        stG{ stAddSources =  ( stAddSources stG ++ [fileName] )}
                                       )
                     Nothing -> (keyvals, stG)

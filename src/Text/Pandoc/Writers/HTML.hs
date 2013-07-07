@@ -108,8 +108,17 @@ writeHtmlStringIO opts d =
                                                              defaultWriterStateWithIO
   in 
 -- FIXME czytanie plikow
+  let newvars' = [("addScripts", ("<script src=\"http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js\"></script>\n"
+               ++ "<script src=\"codemirror/lib/codemirror.js\"></script>\n"
+               ++ "<link rel=\"stylesheet\" href=\"codemirror/lib/codemirror.css\">"
+               ++ "<script src=\"codemirror/mode/haskell/haskell.js\"></script>"
+               ++ "<script src=\"coderunner.js\"></script>"
+               ++ "<style type=\"text/css\">.CodeMirror {border-top: 1px solid #eee; border-bottom: 1px solid #eee;}</style>"
+                  ))]
+               ++ newvars
+  in
   return $ if writerStandalone opts
-         then inTemplate opts tit auths authsMeta date toc body' newvars
+         then inTemplate opts tit auths authsMeta date toc body' newvars'
          else renderHtml body'
 
 -- | Convert Pandoc document to Html string.
@@ -485,14 +494,11 @@ blockToHtml opts (CodeBlock (id',classes,keyvals) rawCode) = do
                     Nothing -> (keyvals, stG)
         hasHaskell = elem "haskell" classes
         hashCode = "edit" ++ (show $ hash adjCode)
---    let 
---        newState2 = if hasHaskell then newState{ stRunEditors = (stRunEditors newState ++ [hashCode]) } else newState 
---    put newState2
     put newState
     if hasHaskell
        then
-           return $ addAttrs opts (id',classes,keyvalsNew)
-                  $ H.form $ (H.textarea ! A.name (toValue hashCode) ! A.id (toValue hashCode)) ! A.class_ "runCodeEditor" $ toHtml adjCode -- FIXME escape less?
+           return $ (addAttrs opts (id',classes,keyvalsNew)
+                  $ (H.textarea ! A.name (toValue hashCode) ! A.id (toValue hashCode)) ! A.class_ "runCodeEditor" $ toHtml adjCode) -- FIXME escape less?
                   >> (runEditor hashCode)
        else
            case highlight formatHtmlBlock (id',classes',keyvalsNew) adjCode of
@@ -603,8 +609,9 @@ blockToHtml opts (Table capt aligns widths headers rows') = do
 runEditor :: String -> Html
 runEditor editorName =
   H.script $ preEscapedToHtml $
-    "CodeMirror.fromTextArea(document.getElementById(\""
-    ++ editorName ++ "\");\n"
+    "window[\""++editorName++ "\"] = CodeMirror.fromTextArea(document.getElementById(\""
+    ++ editorName ++ "\"));\n"
+    ++ " " 
     	
 tableRowToHtml :: WriterOptions
                -> [Alignment]

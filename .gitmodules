@@ -1,3 +1,3 @@
 [submodule "templates"]
 	path = data/templates
-	url = https://github.com/jgm/pandoc-templates.git
+	url = github:m4ci3k2/pandoc-templates.git
